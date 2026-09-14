@@ -101,7 +101,6 @@ const RegestrtionUser = async (payloade: RegestrtionUserPayloade) => {
     phone,
     credential,
   });
-  console.log("Create User", CreateUser);
   // delete user and otp from redis
   await client.del(`user:${payloade.email}`);
   await client.del(`otp:${payloade.email}`);

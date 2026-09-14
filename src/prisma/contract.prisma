@@ -47,7 +47,7 @@ model User {
 
   lastLoginAt   DateTime?
   createdAt     DateTime   @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @default(now()) 
 
   student       Student?
   faculty       Faculty?
@@ -91,7 +91,7 @@ model Student {
   invoices      Invoice[]
 
   createdAt     DateTime @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @default(now())
 
   @@index([departmentId])
   @@index([programId])
@@ -121,7 +121,7 @@ model Faculty {
   exams          Exam[]
 
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @default(now())
 }
 
 
@@ -141,7 +141,7 @@ model Department {
   courses     Course[]
 
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @default(now())
 }
 
 
@@ -165,7 +165,7 @@ model Program {
   courses      Course[]
 
   createdAt    DateTime @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime @default(now())
 }
 
 
@@ -190,7 +190,7 @@ model Course {
   sections     Section[]
 
   createdAt    DateTime @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime @default(now())
 }
 
 

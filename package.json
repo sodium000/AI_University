@@ -1,0 +1,38 @@
+{
+  "name": "ai_agentic_university",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "contract:emit": "prisma contract emit",
+    "postinstall": "prisma skills sync || exit 0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@prisma/orm-postgres": "^8.0.0-rc.10",
+    "cookie-parser": "^1.4.7",
+    "cookies": "^0.9.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "redis": "^6.2.1"
+  },
+  "devDependencies": {
+    "@prisma/cli-engine": "^0.3.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cookies": "^0.9.2",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.20.2",
+    "prisma": "^8.0.0-rc.14",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}

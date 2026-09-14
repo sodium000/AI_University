@@ -1,0 +1,517 @@
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum UserRole {
+  STUDENT
+  FACULTY
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BLOCKED
+}
+
+enum SemesterStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+}
+
+enum CredentialType {
+  EMAIL
+  GOOGLE
+}
+
+// ============================================================
+// User table
+// ============================================================
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  password      String?
+  name          String
+  phone         String?
+  photoUrl      String?
+
+  role          UserRole   @default(STUDENT)
+  status        UserStatus @default(ACTIVE) 
+
+  emailVerified Boolean    @default(false)
+  credential    CredentialType 
+
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime
+
+  student       Student?
+  faculty       Faculty?
+
+  auditLogs     AuditLog[]
+
+  @@index([role])
+  @@index([status])
+}
+
+
+// ============================================================
+// Student table
+// ============================================================
+
+model Student {
+  id            String   @id @default(uuid())
+
+  userId        String   @unique
+  studentId     String   @unique
+
+  departmentId  String
+  programId     String
+
+  admissionYear Int
+  currentYear   Int
+  currentSemester Int
+
+  dateOfBirth   DateTime?
+  gender        String?
+  address       String?
+
+  user          User       @relation(fields: [userId], references: [id])
+  department    Department @relation(fields: [departmentId], references: [id])
+  program       Program    @relation(fields: [programId], references: [id])
+
+  enrollments   Enrollment[]
+  attendances   Attendance[]
+  assignments   AssignmentSubmission[]
+  results       Result[]
+  invoices      Invoice[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+
+  @@index([departmentId])
+  @@index([programId])
+}
+
+// ============================================================
+// Faculty table
+// ============================================================
+
+model Faculty {
+  id             String @id @default(uuid())
+
+  userId         String @unique
+  employeeId     String @unique
+
+  departmentId   String
+
+  designation    String
+  specialization String?
+  joiningDate    DateTime?
+
+  user           User       @relation(fields: [userId], references: [id])
+  department     Department @relation(fields: [departmentId], references: [id])
+
+  sections       Section[]
+  assignments    Assignment[]
+  exams          Exam[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+}
+
+
+// ============================================================
+// Department table
+// ============================================================
+model Department {
+  id          String @id @default(uuid())
+  name        String
+  code        String @unique
+
+  facultyName String?
+
+  programs    Program[]
+  students    Student[]
+  faculty     Faculty[]
+  courses     Course[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+
+// ============================================================
+// Program table
+// ============================================================
+model Program {
+  id           String @id @default(uuid())
+
+  name         String
+  code         String @unique
+
+  departmentId String
+
+  durationYears Int
+  totalCredits  Int
+
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  students     Student[]
+  courses      Course[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+}
+
+
+// ============================================================
+// Course table
+// ============================================================
+model Course {
+  id           String @id @default(uuid())
+
+  code         String @unique
+  title        String
+  description  String?
+
+  credit       Float
+
+  departmentId String
+  programId    String?
+
+  department   Department @relation(fields: [departmentId], references: [id])
+  program      Program?   @relation(fields: [programId], references: [id])
+
+  sections     Section[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+}
+
+
+// ============================================================
+// Semester table
+// ============================================================
+model Semester {
+  id        String @id @default(uuid())
+
+  name      String
+  year      Int
+
+  startDate DateTime
+  endDate   DateTime
+
+  status    SemesterStatus
+
+  sections  Section[]
+}
+
+
+// ============================================================
+// Section table
+// ============================================================
+model Section {
+  id          String @id @default(uuid())
+
+  name        String
+
+  courseId    String
+  semesterId  String
+  facultyId   String
+
+  capacity    Int
+
+  course      Course   @relation(fields: [courseId], references: [id])
+  semester    Semester @relation(fields: [semesterId], references: [id])
+  faculty     Faculty  @relation(fields: [facultyId], references: [id])
+
+  enrollments Enrollment[]
+  schedules   ClassSchedule[]
+  assignments Assignment[]
+  exams       Exam[]
+
+  createdAt   DateTime @default(now())
+
+  @@unique([courseId, semesterId, name])
+}
+
+
+// ============================================================
+// Enrollment table
+// ============================================================
+enum EnrollmentStatus {
+  ENROLLED
+  DROPPED
+  COMPLETED
+  WITHDRAWN
+}
+
+model Enrollment {
+  id         String @id @default(uuid())
+
+  studentId  String
+  sectionId  String
+
+  status     EnrollmentStatus @default(ENROLLED)
+
+  enrolledAt DateTime @default(now())
+
+  student    Student @relation(fields: [studentId], references: [id])
+  section    Section @relation(fields: [sectionId], references: [id])
+
+  result     Result?
+
+  @@unique([studentId, sectionId])
+}
+
+
+// ============================================================
+// Assignment table
+// ============================================================
+model Assignment {
+  id          String @id @default(uuid())
+
+  title       String
+  description String?
+
+  sectionId   String
+  facultyId   String
+
+  deadline    DateTime
+  totalMarks  Float
+
+  section     Section @relation(fields: [sectionId], references: [id])
+  faculty     Faculty @relation(fields: [facultyId], references: [id])
+
+  submissions AssignmentSubmission[]
+
+  createdAt   DateTime @default(now())
+}
+
+
+// ============================================================
+// Assignment Submission table
+// ============================================================
+model AssignmentSubmission {
+  id           String @id @default(uuid())
+
+  assignmentId String
+  studentId    String
+
+  fileUrl      String?
+  submittedAt  DateTime?
+
+  marks        Float?
+  feedback     String?
+
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  student      Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([assignmentId, studentId])
+}
+
+
+// ============================================================
+// Exam type enum
+// ============================================================
+enum ExamType {
+  MIDTERM
+  FINAL
+  QUIZ
+  PRACTICAL
+}
+
+model Exam {
+  id          String @id @default(uuid())
+
+  title       String
+  type        ExamType
+
+  sectionId   String
+  facultyId   String
+
+  examDate    DateTime
+  totalMarks  Float
+
+  section     Section @relation(fields: [sectionId], references: [id])
+  faculty     Faculty @relation(fields: [facultyId], references: [id])
+
+  results     Result[]
+}
+
+
+// ============================================================
+// Result table
+// ============================================================
+model Result {
+  id           String @id @default(uuid())
+
+  studentId    String
+  enrollmentId String @unique
+  examId       String?
+
+  marks        Float
+  grade        String
+  gradePoint   Float
+
+  student      Student    @relation(fields: [studentId], references: [id])
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+  exam         Exam?      @relation(fields: [examId], references: [id])
+
+  @@unique([studentId, enrollmentId])
+}
+
+
+// ============================================================
+// Class Schedule table
+// ============================================================
+model ClassSchedule {
+  id          String @id @default(uuid())
+
+  sectionId   String
+
+  dayOfWeek   Int
+  startTime   String
+  endTime     String
+
+  room        String?
+  building    String?
+
+  section     Section @relation(fields: [sectionId], references: [id])
+}
+
+
+// ============================================================
+// Invoice table
+// ============================================================
+model Invoice {
+  id          String @id @default(uuid())
+
+  studentId   String
+
+  invoiceNo   String @unique
+
+  amount      Float
+  dueDate     DateTime
+
+  status      InvoiceStatus
+
+  student     Student @relation(fields: [studentId], references: [id])
+
+  payments    Payment[]
+
+  createdAt   DateTime @default(now())
+}
+
+
+//================================================
+// Payment table
+//================================================
+model Payment {
+  id          String @id @default(uuid())
+
+  invoiceId   String
+
+  amount      Float
+  method      PaymentMethod
+
+  transactionId String? @unique
+
+  status      PaymentStatus
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+
+  createdAt   DateTime @default(now())
+}
+
+
+//================================================
+// Notification table
+//================================================
+model Notification {
+  id        String @id @default(uuid())
+
+  userId    String
+
+  title     String
+  message   String
+
+  type      NotificationType
+
+  isRead    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+
+//================================================
+// Audit Log table
+//================================================
+model AuditLog {
+  id          String @id @default(uuid())
+
+  userId      String?
+
+  action      String
+  entity      String
+  entityId    String?
+
+  oldData     Json?
+  newData     Json?
+
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  user        User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+//================================================
+// Enums for Invoice / Payment / Notification
+//================================================
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  studentId String
+  date      DateTime
+  status    String
+
+  student   Student  @relation(fields: [studentId], references: [id])
+
+  createdAt DateTime @default(now())
+}

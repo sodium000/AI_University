@@ -4,6 +4,10 @@ import { db } from "../../../prisma/db";
 import ejs from "ejs";
 import path from "path";
 import { transporter } from "../../../lib/nodmiller/nosmiller";
+import bcrypt from "bcryptjs";
+import config from "../../../config";
+import { jwtUtils } from "../../../utils/createJwtToken";
+import { SignOptions } from "jsonwebtoken";
 
 interface CreateUserPayloade {
   name: string;
@@ -23,7 +27,16 @@ const verifyUser = async (payloade: CreateUserPayloade) => {
     throw new Error("User with this email already exists");
   }
 
-  const userData = { ...payloade, credential: "EMAIL" as const };
+  const hashedPassword = await bcrypt.hash(
+    payloade.password,
+    Number(config.bcrypt_salt_rounds),
+  );
+
+  const userData = {
+    ...payloade,
+    password: hashedPassword,
+    credential: "EMAIL" as const,
+  };
   await client.set(`user:${payloade.email}`, JSON.stringify(userData), {
     EX: 20 * 60,
   });
@@ -93,7 +106,30 @@ const RegestrtionUser = async (payloade: RegestrtionUserPayloade) => {
   await client.del(`user:${payloade.email}`);
   await client.del(`otp:${payloade.email}`);
 
-  return CreateUser;
+  const jwtPaylode = {
+    id: CreateUser.id,
+    name: CreateUser.name,
+    email: CreateUser.email,
+    role: CreateUser.role,
+    photo: CreateUser.photoUrl || "",
+  };
+
+  const accessToken = jwtUtils.createToken(
+    jwtPaylode,
+    config.jwt_access_secret!,
+    config.jwt_access_expires_in as SignOptions,
+  );
+
+  const refreshToken = jwtUtils.createToken(
+    jwtPaylode,
+    config.jwt_refresh_secret!,
+    config.jwt_refresh_expires_in as SignOptions,
+  );
+
+  return {
+    accessToken,
+    refreshToken,
+  };
 };
 
 export const authService = {

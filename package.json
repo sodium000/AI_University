@@ -7,6 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "contract:emit": "prisma contract emit",
+    "seed": "tsx src/scripts/seed-student-data.ts",
     "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],

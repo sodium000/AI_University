@@ -1,4 +1,3 @@
-import { error } from "console";
 import { client, generateOTP } from "../../../lib/redis/redis";
 import { db } from "../../../prisma/db";
 import ejs from "ejs";

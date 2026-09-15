@@ -96,7 +96,26 @@ const refreshToken = async (refreshToken: string) => {
   };
 };
 
+const myInfo = async (userId: string) => {
+  const user = await db.orm.public.User.where({ id: userId })
+    .select(
+      "id",
+      "name",
+      "email",
+      "phone",
+      "role",
+      "emailVerified",
+      "credential",
+      "createdAt",
+      "updatedAt",
+    )
+    .first();
+
+  return user;
+};
+
 export const authService = {
   loginUser,
   refreshToken,
+  myInfo,
 };

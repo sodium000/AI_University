@@ -28,9 +28,7 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/", authRoutes);
 app.use("/auth", logUser);
-app.use("/students", studentRoutes);
-app.use("/api/v1/students", studentRoutes);
-app.use("/faculty", facultyRoutes);
+app.use("/api/v1/student", studentRoutes);
 app.use("/api/v1/faculty", facultyRoutes);
 
 export default app;

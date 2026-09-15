@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response } from "express";
 import { authRoutes } from "./module/auth/regestration/regestration.route";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { logUser } from "./module/auth/login/login.route";
 
 const app: Express = express();
 
@@ -24,5 +25,6 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/", authRoutes);
+app.use("/auth", logUser);
 
 export default app;

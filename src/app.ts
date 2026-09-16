@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import { logUser } from "./module/auth/login/login.route";
 import { studentRoutes } from "./module/student/student.route";
 import { facultyRoutes } from "./module/faculty/faculty.route";
+import { adminRoutes } from "./module/admin/admin.route";
 
 const app: Express = express();
 
@@ -30,5 +31,7 @@ app.use("/", authRoutes);
 app.use("/auth", logUser);
 app.use("/api/v1/student", studentRoutes);
 app.use("/api/v1/faculty", facultyRoutes);
+app.use("/admin", adminRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 export default app;

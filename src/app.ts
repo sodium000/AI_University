@@ -6,6 +6,7 @@ import { logUser } from "./module/auth/login/login.route";
 import { studentRoutes } from "./module/student/student.route";
 import { facultyRoutes } from "./module/faculty/faculty.route";
 import { adminRoutes } from "./module/admin/admin.route";
+import { superAdminRoutes } from "./module/super-admin/super-admin.route";
 
 const app: Express = express();
 
@@ -33,5 +34,7 @@ app.use("/api/v1/student", studentRoutes);
 app.use("/api/v1/faculty", facultyRoutes);
 app.use("/admin", adminRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/super-admin", superAdminRoutes);
+app.use("/api/v1/super-admin", superAdminRoutes);
 
 export default app;

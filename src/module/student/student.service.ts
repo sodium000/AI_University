@@ -1,5 +1,7 @@
 import { db } from "../../prisma/db";
 import { Temporal } from "@js-temporal/polyfill";
+import config from "../../config";
+import { stripe } from "../../config/stripe";
 
 const toInstant = (d?: Date | string | null) => {
   if (!d) return Temporal.Now.instant();
@@ -12,6 +14,20 @@ interface UpdateProfilePayload {
   dateOfBirth?: string | Date;
   gender?: string;
   address?: string;
+}
+
+export interface CreateStudentProfilePayload {
+  departmentId: string;
+  programId: string;
+  studentId?: string;
+  admissionYear?: number;
+  currentYear?: number;
+  currentSemester?: number;
+  dateOfBirth?: string | Date;
+  gender?: string;
+  address?: string;
+  phone?: string;
+  photoUrl?: string;
 }
 
 const getProfile = async (userId: string) => {
@@ -51,6 +67,66 @@ const getProfile = async (userId: string) => {
     isProfileComplete: true,
     ...student,
   };
+};
+
+const createProfile = async (
+  userId: string,
+  payload: CreateStudentProfilePayload,
+) => {
+  const existingStudent = await db.orm.public.Student.where({ userId }).first();
+  if (existingStudent) {
+    throw new Error("Student profile already exists for this user account.");
+  }
+
+  if (!payload.departmentId || !payload.programId) {
+    throw new Error("Both departmentId and programId are required.");
+  }
+
+  const [dept, prog] = await Promise.all([
+    db.orm.public.Department.where({ id: payload.departmentId }).first(),
+    db.orm.public.Program.where({ id: payload.programId }).first(),
+  ]);
+
+  if (!dept) throw new Error("Department not found with provided departmentId.");
+  if (!prog) throw new Error("Program not found with provided programId.");
+
+  let studentId = payload.studentId;
+  if (!studentId) {
+    const admissionYear = Number(payload.admissionYear) || new Date().getFullYear();
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    studentId = `STU${admissionYear}${randomSuffix}`;
+  } else {
+    const duplicate = await db.orm.public.Student.where({ studentId }).first();
+    if (duplicate) {
+      throw new Error(`Student with studentId '${studentId}' already exists.`);
+    }
+  }
+
+  if (payload.phone !== undefined || payload.photoUrl !== undefined) {
+    const userUpdate: Record<string, any> = {};
+    if (payload.phone !== undefined) userUpdate.phone = payload.phone;
+    if (payload.photoUrl !== undefined) userUpdate.photoUrl = payload.photoUrl;
+    if (Object.keys(userUpdate).length > 0) {
+      await db.orm.public.User.where({ id: userId }).update(userUpdate);
+    }
+  }
+
+  await db.orm.public.Student.create({
+    userId,
+    studentId,
+    departmentId: payload.departmentId,
+    programId: payload.programId,
+    admissionYear: Number(payload.admissionYear) || new Date().getFullYear(),
+    currentYear: Number(payload.currentYear) || 1,
+    currentSemester: Number(payload.currentSemester) || 1,
+    dateOfBirth: payload.dateOfBirth ? toInstant(payload.dateOfBirth) : null,
+    gender: payload.gender || null,
+    address: payload.address || null,
+    createdAt: Temporal.Now.instant(),
+    updatedAt: Temporal.Now.instant(),
+  });
+
+  return getProfile(userId);
 };
 
 const updateProfile = async (
@@ -675,8 +751,155 @@ const getNotifications = async (userId: string, unreadOnly?: boolean) => {
   };
 };
 
+const createPaymentCheckoutSession = async (
+  studentId: string,
+  invoiceId: string,
+) => {
+  if (!studentId) {
+    throw new Error("Student profile record not found.");
+  }
+  if (!invoiceId) {
+    throw new Error("invoiceId is required.");
+  }
+
+  // 1. Fetch the invoice
+  const invoice = await db.orm.public.Invoice.where({
+    id: invoiceId,
+    studentId,
+  }).first();
+
+  if (!invoice) {
+    throw new Error("Invoice not found or unauthorized.");
+  }
+  if (invoice.status === "PAID") {
+    throw new Error("This invoice is already paid.");
+  }
+  if (invoice.status === "CANCELLED") {
+    throw new Error("Cannot pay a cancelled invoice.");
+  }
+
+  const student = await db.orm.public.Student.where({
+    id: studentId,
+  })
+    .include("user", (u) => u.select("email"))
+    .first();
+  const customerEmail = student?.user?.email;
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+
+  // Dynamic line item based on invoice amount
+  const line_items = [
+    {
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: `Tuition / Fee - Invoice #${invoice.invoiceNo}`,
+          description: `University fee payment for invoice #${invoice.invoiceNo}`,
+        },
+        unit_amount: Math.max(Math.round(Number(invoice.amount) * 100), 50),
+      },
+      quantity: 1,
+    },
+  ];
+
+  // 2. Create Stripe Checkout Session
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    mode: "payment",
+    customer_email: customerEmail,
+    line_items,
+    metadata: {
+      invoiceId: invoice.id,
+      studentId,
+    },
+    success_url: `${frontendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${frontendUrl}/payment/cancel?invoice_id=${invoice.id}`,
+  });
+
+  return {
+    sessionId: session.id,
+    checkoutUrl: session.url,
+  };
+};
+
+const verifyAndFulfillPayment = async (sessionId: string) => {
+  if (!sessionId) {
+    throw new Error("sessionId is required.");
+  }
+
+  // 1. Retrieve session from Stripe
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (session.payment_status !== "paid") {
+    throw new Error("Payment has not been completed on Stripe.");
+  }
+
+  const invoiceId = session.metadata?.invoiceId;
+  const studentId = session.metadata?.studentId;
+
+  if (!invoiceId) {
+    throw new Error("Missing invoiceId metadata in Stripe session.");
+  }
+
+  const invoice = await db.orm.public.Invoice.where({ id: invoiceId }).first();
+  if (!invoice) {
+    throw new Error("Associated invoice not found.");
+  }
+
+  const transactionId = (session.payment_intent as string) || session.id;
+
+  // 2. Check if payment was already recorded
+  const existingPayment = await db.orm.public.Payment.where({
+    transactionId,
+  }).first();
+
+  if (existingPayment) {
+    return {
+      message: "Payment was already processed.",
+      payment: existingPayment,
+      invoice,
+    };
+  }
+
+  const paidAmount = Number(session.amount_total) / 100;
+
+  // 3. Create Payment record in DB
+  const payment = await db.orm.public.Payment.create({
+    invoiceId: invoice.id,
+    amount: paidAmount,
+    method: "ONLINE" as any,
+    transactionId,
+    status: "SUCCESS" as any,
+    createdAt: Temporal.Now.instant(),
+  });
+
+  // 4. Update Invoice status to PAID
+  await db.orm.public.Invoice.where({ id: invoice.id }).update({
+    status: "PAID" as any,
+  });
+
+  // 5. Send Notification to Student
+  const student = await db.orm.public.Student.where({ id: studentId }).first();
+  if (student?.userId) {
+    await db.orm.public.Notification.create({
+      userId: student.userId,
+      title: "Invoice Paid Successfully",
+      message: `Your payment of $${paidAmount} for invoice #${invoice.invoiceNo} was successful. Transaction ID: ${transactionId}`,
+      type: "INFO" as any,
+      isRead: false,
+      createdAt: Temporal.Now.instant(),
+    });
+  }
+
+  return {
+    message: "Payment successfully recorded.",
+    payment,
+    invoiceStatus: "PAID",
+  };
+};
+
 export const studentService = {
   getProfile,
+  createProfile,
   updateProfile,
   getEnrolledCourses,
   getSchedule,
@@ -689,5 +912,7 @@ export const studentService = {
   submitAssignment,
   getInvoices,
   getPayments,
+  createPaymentCheckoutSession,
+  verifyAndFulfillPayment,
   getNotifications,
 };

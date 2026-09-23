@@ -23,6 +23,42 @@ const getProfile = async (req: AuthRequest, res: Response) => {
   }
 };
 
+const createProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized! User context not found.",
+        data: null,
+      });
+    }
+
+    const payload = req.body;
+    const profile = await studentService.createProfile(userId, payload);
+
+    return res.status(201).json({
+      success: true,
+      statusCode: 201,
+      message: "Student profile created successfully",
+      data: profile,
+    });
+  } catch (error: any) {
+    const isClientError =
+      error.message?.includes("already exists") ||
+      error.message?.includes("required") ||
+      error.message?.includes("not found");
+    const statusCode = isClientError ? 400 : 500;
+    return res.status(statusCode).json({
+      success: false,
+      statusCode,
+      message: error.message || "Failed to create student profile",
+      data: null,
+    });
+  }
+};
+
 const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -351,8 +387,80 @@ const getNotifications = async (req: AuthRequest, res: Response) => {
   }
 };
 
+const createPaymentCheckoutSession = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const studentId = req.student?.id;
+    const invoiceId = req.body?.invoiceId || req.params?.id;
+
+    if (!invoiceId) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "invoiceId is required",
+        data: null,
+      });
+    }
+
+    const data = await studentService.createPaymentCheckoutSession(
+      studentId,
+      invoiceId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Stripe checkout session created successfully",
+      data,
+    });
+  } catch (error: any) {
+    const statusCode = error.message?.includes("not found") ? 404 : 400;
+    return res.status(statusCode).json({
+      success: false,
+      statusCode,
+      message: error.message || "Failed to create checkout session",
+      data: null,
+    });
+  }
+};
+
+const verifyPayment = async (req: AuthRequest, res: Response) => {
+  try {
+    const sessionId = req.body?.sessionId || (req.query?.sessionId as string);
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "sessionId is required",
+        data: null,
+      });
+    }
+
+    const data = await studentService.verifyAndFulfillPayment(sessionId);
+
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: data.message || "Payment processed successfully",
+      data,
+    });
+  } catch (error: any) {
+    const statusCode = error.message?.includes("not found") ? 404 : 400;
+    return res.status(statusCode).json({
+      success: false,
+      statusCode,
+      message: error.message || "Failed to verify payment",
+      data: null,
+    });
+  }
+};
+
 export const studentController = {
   getProfile,
+  createProfile,
   updateProfile,
   getEnrolledCourses,
   getSchedule,
@@ -365,5 +473,7 @@ export const studentController = {
   submitAssignment,
   getInvoices,
   getPayments,
+  createPaymentCheckoutSession,
+  verifyPayment,
   getNotifications,
 };

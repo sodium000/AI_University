@@ -1,5 +1,8 @@
 import { db } from "../../prisma/db";
 import { Temporal } from "@js-temporal/polyfill";
+import { jwtUtils } from "../../utils/createJwtToken";
+import config from "../../config";
+import { SignOptions } from "jsonwebtoken";
 
 const toInstant = (d?: Date | string | null) => {
   if (!d) return Temporal.Now.instant();
@@ -20,6 +23,16 @@ const calculateGrade = (
   if (marks >= 40) return { grade: "D", gradePoint: 2.0 };
   return { grade: "F", gradePoint: 0.0 };
 };
+
+export interface CreateFacultyProfilePayload {
+  departmentId: string;
+  employeeId?: string;
+  designation?: string;
+  specialization?: string;
+  joiningDate?: string | Date;
+  phone?: string;
+  photoUrl?: string;
+}
 
 export interface UpdateFacultyProfilePayload {
   phone?: string;
@@ -108,6 +121,83 @@ const getProfile = async (userId: string) => {
   return {
     isProfileComplete: true,
     ...faculty,
+  };
+};
+
+const createProfile = async (
+  userId: string,
+  payload: CreateFacultyProfilePayload,
+) => {
+  const existingFaculty = await db.orm.public.Faculty.where({ userId }).first();
+  if (existingFaculty) {
+    throw new Error("Faculty profile already exists for this user account.");
+  }
+
+  if (!payload.departmentId) {
+    throw new Error("departmentId is required.");
+  }
+
+  const dept = await db.orm.public.Department.where({ id: payload.departmentId }).first();
+  if (!dept) {
+    throw new Error("Department not found with provided departmentId.");
+  }
+
+  let employeeId = payload.employeeId;
+  if (!employeeId) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    employeeId = `FAC${new Date().getFullYear()}${randomSuffix}`;
+  } else {
+    const duplicate = await db.orm.public.Faculty.where({ employeeId }).first();
+    if (duplicate) {
+      throw new Error(`Faculty with employeeId '${employeeId}' already exists.`);
+    }
+  }
+
+  const userUpdate: Record<string, any> = {
+    role: "FACULTY" as const,
+  };
+  if (payload.phone !== undefined) userUpdate.phone = payload.phone;
+  if (payload.photoUrl !== undefined) userUpdate.photoUrl = payload.photoUrl;
+  await db.orm.public.User.where({ id: userId }).update(userUpdate);
+
+  await db.orm.public.Faculty.create({
+    userId,
+    employeeId,
+    departmentId: payload.departmentId,
+    designation: payload.designation || "Lecturer",
+    specialization: payload.specialization || null,
+    joiningDate: payload.joiningDate ? toInstant(payload.joiningDate) : Temporal.Now.instant(),
+    createdAt: Temporal.Now.instant(),
+    updatedAt: Temporal.Now.instant(),
+  });
+
+  const updatedUser = await db.orm.public.User.where({ id: userId }).first();
+  const jwtPayload = {
+    id: updatedUser?.id,
+    name: updatedUser?.name,
+    email: updatedUser?.email,
+    role: updatedUser?.role,
+    photo: updatedUser?.photoUrl,
+  };
+
+  const accessToken = jwtUtils.createToken(
+    jwtPayload,
+    config.jwt_access_secret!,
+    config.jwt_access_expires_in as SignOptions,
+  );
+
+  const refreshToken = jwtUtils.createToken(
+    jwtPayload,
+    config.jwt_refresh_secret!,
+    config.jwt_refresh_expires_in as SignOptions,
+  );
+
+  const profile = await getProfile(userId);
+
+  return {
+    profile,
+    accessToken,
+    refreshToken,
   };
 };
 
@@ -786,6 +876,7 @@ const createExam = async (facultyId: string, payload: CreateExamPayload) => {
 
 export const facultyService = {
   getProfile,
+  createProfile,
   updateProfile,
   getMySections,
   getMyStudents,

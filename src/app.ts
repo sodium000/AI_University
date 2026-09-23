@@ -7,9 +7,8 @@ import { studentRoutes } from "./module/student/student.route";
 import { facultyRoutes } from "./module/faculty/faculty.route";
 import { adminRoutes } from "./module/admin/admin.route";
 import { superAdminRoutes } from "./module/super-admin/super-admin.route";
-import { paymentRoute } from "./module/payment/payment.route";
 import { stripe } from "./config/stripe";
-import { paymentService } from "./module/payment/payment.service";
+import { studentService } from "./module/student/student.service";
 
 const app: Express = express();
 
@@ -48,7 +47,7 @@ app.post(
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as any;
       try {
-        await paymentService.verifyAndFulfillStripeSession(session.id);
+        await studentService.verifyAndFulfillPayment(session.id);
         console.log(`Payment fulfilled for session: ${session.id}`);
       } catch (err: any) {
         console.error("Failed to fulfill payment via webhook:", err.message);
@@ -78,6 +77,5 @@ app.use("/admin", adminRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/super-admin", superAdminRoutes);
 app.use("/api/v1/super-admin", superAdminRoutes);
-app.use("/api/v1/payment", paymentRoute);
 
 export default app;

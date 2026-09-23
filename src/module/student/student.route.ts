@@ -6,6 +6,7 @@ const router = Router();
 
 // Profile
 router.get("/me", auth("STUDENT"), studentController.getProfile);
+router.post("/me", auth("STUDENT"), studentController.createProfile);
 router.patch("/me", auth("STUDENT"), studentController.updateProfile);
 
 // Courses & Enrollment
@@ -40,6 +41,21 @@ router.post(
 // Billing & Payments
 router.get("/me/invoices", auth("STUDENT"), studentController.getInvoices);
 router.get("/me/payments", auth("STUDENT"), studentController.getPayments);
+router.post(
+  "/me/payments/checkout",
+  auth("STUDENT"),
+  studentController.createPaymentCheckoutSession,
+);
+router.post(
+  "/me/invoices/:id/pay",
+  auth("STUDENT"),
+  studentController.createPaymentCheckoutSession,
+);
+router.post(
+  "/me/payments/verify",
+  auth("STUDENT"),
+  studentController.verifyPayment,
+);
 
 // Notifications
 router.get(

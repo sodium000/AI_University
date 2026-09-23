@@ -40,6 +40,53 @@ const getProfile = async (req: AuthRequest, res: Response) => {
   }
 };
 
+const createProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized! User context not found.",
+        data: null,
+      });
+    }
+
+    const payload = req.body;
+    const result = await facultyService.createProfile(userId, payload);
+
+    res.cookie("accessToken", result.accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "none",
+      maxAge: 1000 * 60 * 60 * 24,
+    });
+
+    res.cookie("refreshToken", result.refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "none",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+
+    return res.status(201).json({
+      success: true,
+      statusCode: 201,
+      message:
+        "Faculty profile created successfully and user role upgraded to FACULTY",
+      data: result,
+    });
+  } catch (error: any) {
+    const statusCode = resolveStatusCode(error);
+    return res.status(statusCode).json({
+      success: false,
+      statusCode,
+      message: error.message || "Failed to create faculty profile",
+      data: null,
+    });
+  }
+};
+
 const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -153,7 +200,8 @@ const recordAttendance = async (req: AuthRequest, res: Response) => {
     const id = req.params.id as string;
     const body = req.body;
 
-    const records = body.records || body.attendances || (Array.isArray(body) ? body : []);
+    const records =
+      body.records || body.attendances || (Array.isArray(body) ? body : []);
     const date = body.date;
 
     const result = await facultyService.recordAttendance(facultyId, id, {
@@ -367,6 +415,7 @@ const createExam = async (req: AuthRequest, res: Response) => {
 
 export const facultyController = {
   getProfile,
+  createProfile,
   updateProfile,
   getMySections,
   getMyStudents,

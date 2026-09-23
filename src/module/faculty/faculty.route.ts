@@ -5,7 +5,8 @@ import { auth } from "../../middleware/auth";
 const router = Router();
 
 // Profile
-router.get("/me", auth("FACULTY"), facultyController.getProfile);
+router.get("/me", auth("FACULTY", "STUDENT"), facultyController.getProfile);
+router.post("/me", auth("STUDENT", "FACULTY"), facultyController.createProfile);
 router.patch("/me", auth("FACULTY"), facultyController.updateProfile);
 
 // Sections & Students taught by faculty

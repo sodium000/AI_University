@@ -59,6 +59,50 @@ app.post(
   },
 );
 
+// Payment success redirect handler (called by Stripe after checkout)
+// This auto-verifies and records the payment when webhook can't reach localhost
+app.get("/payment/success", async (req: Request, res: Response) => {
+  const sessionId = req.query?.session_id as string;
+  if (!sessionId) {
+    return res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: "Missing session_id query parameter.",
+      data: null,
+    });
+  }
+  try {
+    const result = await studentService.verifyAndFulfillPayment(sessionId);
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: result.message || "Payment verified and recorded successfully.",
+      data: {
+        payment: result.payment,
+        invoiceStatus: result.invoiceStatus,
+      },
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: err.message || "Failed to verify payment.",
+      data: null,
+    });
+  }
+});
+
+// Payment cancel redirect handler (called by Stripe when user cancels checkout)
+app.get("/payment/cancel", (req: Request, res: Response) => {
+  const invoiceId = req.query?.invoice_id as string;
+  return res.status(200).json({
+    success: false,
+    statusCode: 200,
+    message: "Payment was cancelled. You can retry payment from your invoices.",
+    data: { invoiceId: invoiceId || null },
+  });
+});
+
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));

@@ -53,7 +53,10 @@ export const getDashboardStats = async () => {
     enrollmentCountRes,
   ] = await Promise.all([
     db.orm.public.Student.aggregate((a) => ({ count: a.count() })),
-    db.orm.public.User.where({ role: "STUDENT" as const, status: "ACTIVE" as const }).aggregate((a) => ({ count: a.count() })),
+    db.orm.public.User.where({
+      role: "STUDENT" as const,
+      status: "ACTIVE" as const,
+    }).aggregate((a) => ({ count: a.count() })),
     db.orm.public.Faculty.aggregate((a) => ({ count: a.count() })),
     db.orm.public.Department.aggregate((a) => ({ count: a.count() })),
     db.orm.public.Program.aggregate((a) => ({ count: a.count() })),
@@ -63,42 +66,48 @@ export const getDashboardStats = async () => {
   ]);
 
   // Financial overview
-  const totalRevenueRes = await db.orm.public.Payment.where({ status: "SUCCESS" as const })
-    .aggregate((a) => ({ total: a.sum("amount") }));
+  const totalRevenueRes = await db.orm.public.Payment.where({
+    status: "SUCCESS" as const,
+  }).aggregate((a) => ({ total: a.sum("amount") }));
 
-  const pendingInvoicesRes = await db.orm.public.Invoice.where({ status: "PENDING" as const })
-    .aggregate((a) => ({ total: a.sum("amount"), count: a.count() }));
+  const pendingInvoicesRes = await db.orm.public.Invoice.where({
+    status: "PENDING" as const,
+  }).aggregate((a) => ({ total: a.sum("amount"), count: a.count() }));
 
   // Active semester
-  const activeSemester = await db.orm.public.Semester.where({ status: "ACTIVE" as const }).first();
+  const activeSemester = await db.orm.public.Semester.where({
+    status: "ACTIVE" as const,
+  }).first();
 
   // Recent Enrollments (last 5)
-  const recentEnrollments = await db.orm.public.Enrollment
-    .include("student", (st) =>
-      st.include("user", (u) => u.select("id", "name", "email"))
-        .include("department", (d) => d.select("id", "name", "code"))
-    )
+  const recentEnrollments = await db.orm.public.Enrollment.include(
+    "student",
+    (st) =>
+      st
+        .include("user", (u) => u.select("id", "name", "email"))
+        .include("department", (d) => d.select("id", "name", "code")),
+  )
     .include("section", (s) =>
-      s.include("course", (c) => c.select("id", "code", "title"))
+      s.include("course", (c) => c.select("id", "code", "title")),
     )
     .orderBy((e) => e.enrolledAt.desc())
     .limit(5)
     .all();
 
   // Recent Payments (last 5)
-  const recentPayments = await db.orm.public.Payment
-    .include("invoice", (inv) =>
-      inv.include("student", (st) =>
-        st.include("user", (u) => u.select("id", "name", "email"))
-      )
-    )
+  const recentPayments = await db.orm.public.Payment.include("invoice", (inv) =>
+    inv.include("student", (st) =>
+      st.include("user", (u) => u.select("id", "name", "email")),
+    ),
+  )
     .orderBy((p) => p.createdAt.desc())
     .limit(5)
     .all();
 
   // Recent Audit Logs (last 5)
-  const recentActivity = await db.orm.public.AuditLog
-    .include("user", (u) => u.select("id", "name", "email", "role"))
+  const recentActivity = await db.orm.public.AuditLog.include("user", (u) =>
+    u.select("id", "name", "email", "role"),
+  )
     .orderBy((l) => l.createdAt.desc())
     .limit(5)
     .all();
@@ -167,10 +176,24 @@ export const getAllStudents = async (filters: StudentQueryFilters) => {
     query.aggregate((a) => ({ count: a.count() })),
     query
       .include("user", (u) =>
-        u.select("id", "name", "email", "phone", "photoUrl", "role", "status", "emailVerified", "createdAt")
+        u.select(
+          "id",
+          "name",
+          "email",
+          "phone",
+          "photoUrl",
+          "role",
+          "status",
+          "emailVerified",
+          "createdAt",
+        ),
       )
-      .include("department", (d) => d.select("id", "name", "code", "facultyName"))
-      .include("program", (p) => p.select("id", "name", "code", "durationYears", "totalCredits"))
+      .include("department", (d) =>
+        d.select("id", "name", "code", "facultyName"),
+      )
+      .include("program", (p) =>
+        p.select("id", "name", "code", "durationYears", "totalCredits"),
+      )
       .orderBy((s) => s.createdAt.desc())
       .offset(skip)
       .limit(limit)
@@ -179,14 +202,17 @@ export const getAllStudents = async (filters: StudentQueryFilters) => {
 
   let filteredStudents = students;
   if (filters.status) {
-    filteredStudents = filteredStudents.filter((s) => s.user?.status === filters.status);
+    filteredStudents = filteredStudents.filter(
+      (s) => s.user?.status === filters.status,
+    );
   }
   if (filters.searchTerm) {
     const term = filters.searchTerm.toLowerCase();
-    filteredStudents = filteredStudents.filter((s) =>
-      s.studentId.toLowerCase().includes(term) ||
-      s.user?.name?.toLowerCase().includes(term) ||
-      s.user?.email?.toLowerCase().includes(term)
+    filteredStudents = filteredStudents.filter(
+      (s) =>
+        s.studentId.toLowerCase().includes(term) ||
+        s.user?.name?.toLowerCase().includes(term) ||
+        s.user?.email?.toLowerCase().includes(term),
     );
   }
 
@@ -224,7 +250,9 @@ export const createStudent = async (
   clientIp?: string,
   userAgent?: string,
 ) => {
-  const existingUser = await db.orm.public.User.where({ email: payload.email }).first();
+  const existingUser = await db.orm.public.User.where({
+    email: payload.email,
+  }).first();
   if (existingUser) {
     throw new Error(`User with email '${payload.email}' already exists.`);
   }
@@ -234,7 +262,8 @@ export const createStudent = async (
     db.orm.public.Department.where({ id: payload.departmentId }).first(),
     db.orm.public.Program.where({ id: payload.programId }).first(),
   ]);
-  if (!dept) throw new Error("Department not found with provided departmentId.");
+  if (!dept)
+    throw new Error("Department not found with provided departmentId.");
   if (!prog) throw new Error("Program not found with provided programId.");
 
   // Generate or verify studentId
@@ -243,7 +272,9 @@ export const createStudent = async (
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     studentId = `STU${payload.admissionYear || new Date().getFullYear()}${randomSuffix}`;
   } else {
-    const existingStudent = await db.orm.public.Student.where({ studentId }).first();
+    const existingStudent = await db.orm.public.Student.where({
+      studentId,
+    }).first();
     if (existingStudent) {
       throw new Error(`Student with studentId '${studentId}' already exists.`);
     }
@@ -292,7 +323,11 @@ export const createStudent = async (
     "CREATE_STUDENT",
     "Student",
     result.student.id,
-    { studentId: result.student.studentId, email: result.user.email, name: result.user.name },
+    {
+      studentId: result.student.studentId,
+      email: result.user.email,
+      name: result.user.name,
+    },
     null,
     adminUserId,
     clientIp,
@@ -338,12 +373,18 @@ export const updateStudent = async (
   userAgent?: string,
 ) => {
   // Can identify by student id, student primary id, or user id
-  let student = await db.orm.public.Student.where({ id: idOrStudentId }).first();
+  let student = await db.orm.public.Student.where({
+    id: idOrStudentId,
+  }).first();
   if (!student) {
-    student = await db.orm.public.Student.where({ studentId: idOrStudentId }).first();
+    student = await db.orm.public.Student.where({
+      studentId: idOrStudentId,
+    }).first();
   }
   if (!student) {
-    student = await db.orm.public.Student.where({ userId: idOrStudentId }).first();
+    student = await db.orm.public.Student.where({
+      userId: idOrStudentId,
+    }).first();
   }
 
   if (!student) {
@@ -354,7 +395,9 @@ export const updateStudent = async (
   const oldData = { student, user };
 
   // User updates
-  const userUpdates: Record<string, any> = { updatedAt: Temporal.Now.instant() };
+  const userUpdates: Record<string, any> = {
+    updatedAt: Temporal.Now.instant(),
+  };
   if (payload.name !== undefined) userUpdates.name = payload.name;
   if (payload.phone !== undefined) userUpdates.phone = payload.phone;
   if (payload.photoUrl !== undefined) userUpdates.photoUrl = payload.photoUrl;
@@ -367,21 +410,32 @@ export const updateStudent = async (
   }
 
   // Student updates
-  const studentUpdates: Record<string, any> = { updatedAt: Temporal.Now.instant() };
-  if (payload.departmentId !== undefined) studentUpdates.departmentId = payload.departmentId;
-  if (payload.programId !== undefined) studentUpdates.programId = payload.programId;
-  if (payload.currentYear !== undefined) studentUpdates.currentYear = Number(payload.currentYear);
-  if (payload.currentSemester !== undefined) studentUpdates.currentSemester = Number(payload.currentSemester);
-  if (payload.dateOfBirth !== undefined) studentUpdates.dateOfBirth = toInstant(payload.dateOfBirth);
+  const studentUpdates: Record<string, any> = {
+    updatedAt: Temporal.Now.instant(),
+  };
+  if (payload.departmentId !== undefined)
+    studentUpdates.departmentId = payload.departmentId;
+  if (payload.programId !== undefined)
+    studentUpdates.programId = payload.programId;
+  if (payload.currentYear !== undefined)
+    studentUpdates.currentYear = Number(payload.currentYear);
+  if (payload.currentSemester !== undefined)
+    studentUpdates.currentSemester = Number(payload.currentSemester);
+  if (payload.dateOfBirth !== undefined)
+    studentUpdates.dateOfBirth = toInstant(payload.dateOfBirth);
   if (payload.gender !== undefined) studentUpdates.gender = payload.gender;
   if (payload.address !== undefined) studentUpdates.address = payload.address;
 
   await db.transaction(async (tx) => {
     if (Object.keys(userUpdates).length > 1) {
-      await tx.orm.public.User.where({ id: student!.userId }).update(userUpdates);
+      await tx.orm.public.User.where({ id: student!.userId }).update(
+        userUpdates,
+      );
     }
     if (Object.keys(studentUpdates).length > 1) {
-      await tx.orm.public.Student.where({ id: student!.id }).update(studentUpdates);
+      await tx.orm.public.Student.where({ id: student!.id }).update(
+        studentUpdates,
+      );
     }
   });
 
@@ -397,7 +451,9 @@ export const updateStudent = async (
   );
 
   const updatedStudent = await db.orm.public.Student.where({ id: student.id })
-    .include("user", (u) => u.select("id", "name", "email", "phone", "photoUrl", "role", "status"))
+    .include("user", (u) =>
+      u.select("id", "name", "email", "phone", "photoUrl", "role", "status"),
+    )
     .include("department", (d) => d.select("id", "name", "code"))
     .include("program", (p) => p.select("id", "name", "code"))
     .first();
@@ -412,12 +468,18 @@ export const deleteStudent = async (
   clientIp?: string,
   userAgent?: string,
 ) => {
-  let student = await db.orm.public.Student.where({ id: idOrStudentId }).first();
+  let student = await db.orm.public.Student.where({
+    id: idOrStudentId,
+  }).first();
   if (!student) {
-    student = await db.orm.public.Student.where({ studentId: idOrStudentId }).first();
+    student = await db.orm.public.Student.where({
+      studentId: idOrStudentId,
+    }).first();
   }
   if (!student) {
-    student = await db.orm.public.Student.where({ userId: idOrStudentId }).first();
+    student = await db.orm.public.Student.where({
+      userId: idOrStudentId,
+    }).first();
   }
 
   if (!student) {
@@ -426,11 +488,12 @@ export const deleteStudent = async (
 
   if (hardDelete) {
     // Check if there are enrollments or invoices that block hard deletion
-    const enrollmentsCount = await db.orm.public.Enrollment.where({ studentId: student.id })
-      .aggregate((a) => ({ count: a.count() }));
+    const enrollmentsCount = await db.orm.public.Enrollment.where({
+      studentId: student.id,
+    }).aggregate((a) => ({ count: a.count() }));
     if ((enrollmentsCount?.count ?? 0) > 0) {
       throw new Error(
-        "Cannot permanently delete student: academic records (enrollments) exist. Please deactivate instead."
+        "Cannot permanently delete student: academic records (enrollments) exist. Please deactivate instead.",
       );
     }
 
@@ -450,7 +513,10 @@ export const deleteStudent = async (
       userAgent,
     );
 
-    return { message: "Student and user account permanently deleted.", id: student.id };
+    return {
+      message: "Student and user account permanently deleted.",
+      id: student.id,
+    };
   } else {
     // Soft deactivation (preferred for university records)
     await db.orm.public.User.where({ id: student.userId }).update({
@@ -507,9 +573,20 @@ export const getAllFaculty = async (filters: FacultyQueryFilters) => {
     query.aggregate((a) => ({ count: a.count() })),
     query
       .include("user", (u) =>
-        u.select("id", "name", "email", "phone", "photoUrl", "role", "status", "createdAt")
+        u.select(
+          "id",
+          "name",
+          "email",
+          "phone",
+          "photoUrl",
+          "role",
+          "status",
+          "createdAt",
+        ),
       )
-      .include("department", (d) => d.select("id", "name", "code", "facultyName"))
+      .include("department", (d) =>
+        d.select("id", "name", "code", "facultyName"),
+      )
       .orderBy((f) => f.createdAt.desc())
       .offset(skip)
       .limit(limit)
@@ -522,11 +599,12 @@ export const getAllFaculty = async (filters: FacultyQueryFilters) => {
   }
   if (filters.searchTerm) {
     const term = filters.searchTerm.toLowerCase();
-    filtered = filtered.filter((f) =>
-      f.employeeId.toLowerCase().includes(term) ||
-      f.designation.toLowerCase().includes(term) ||
-      f.user?.name?.toLowerCase().includes(term) ||
-      f.user?.email?.toLowerCase().includes(term)
+    filtered = filtered.filter(
+      (f) =>
+        f.employeeId.toLowerCase().includes(term) ||
+        f.designation.toLowerCase().includes(term) ||
+        f.user?.name?.toLowerCase().includes(term) ||
+        f.user?.email?.toLowerCase().includes(term),
     );
   }
 
@@ -560,22 +638,31 @@ export const createFaculty = async (
   clientIp?: string,
   userAgent?: string,
 ) => {
-  const existingUser = await db.orm.public.User.where({ email: payload.email }).first();
+  const existingUser = await db.orm.public.User.where({
+    email: payload.email,
+  }).first();
   if (existingUser) {
     throw new Error(`User with email '${payload.email}' already exists.`);
   }
 
-  const dept = await db.orm.public.Department.where({ id: payload.departmentId }).first();
-  if (!dept) throw new Error("Department not found with provided departmentId.");
+  const dept = await db.orm.public.Department.where({
+    id: payload.departmentId,
+  }).first();
+  if (!dept)
+    throw new Error("Department not found with provided departmentId.");
 
   let employeeId = payload.employeeId;
   if (!employeeId) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     employeeId = `FAC${new Date().getFullYear()}${randomSuffix}`;
   } else {
-    const existingFaculty = await db.orm.public.Faculty.where({ employeeId }).first();
+    const existingFaculty = await db.orm.public.Faculty.where({
+      employeeId,
+    }).first();
     if (existingFaculty) {
-      throw new Error(`Faculty with employeeId '${employeeId}' already exists.`);
+      throw new Error(
+        `Faculty with employeeId '${employeeId}' already exists.`,
+      );
     }
   }
 
@@ -606,7 +693,9 @@ export const createFaculty = async (
       departmentId: payload.departmentId,
       designation: payload.designation,
       specialization: payload.specialization || null,
-      joiningDate: payload.joiningDate ? toInstant(payload.joiningDate) : Temporal.Now.instant(),
+      joiningDate: payload.joiningDate
+        ? toInstant(payload.joiningDate)
+        : Temporal.Now.instant(),
       createdAt: Temporal.Now.instant(),
       updatedAt: Temporal.Now.instant(),
     });
@@ -618,7 +707,11 @@ export const createFaculty = async (
     "CREATE_FACULTY",
     "Faculty",
     result.faculty.id,
-    { employeeId: result.faculty.employeeId, email: result.user.email, designation: result.faculty.designation },
+    {
+      employeeId: result.faculty.employeeId,
+      email: result.user.email,
+      designation: result.faculty.designation,
+    },
     null,
     adminUserId,
     clientIp,
@@ -655,7 +748,9 @@ export const createDepartment = async (
   clientIp?: string,
   userAgent?: string,
 ) => {
-  const existing = await db.orm.public.Department.where({ code: payload.code.toUpperCase() }).first();
+  const existing = await db.orm.public.Department.where({
+    code: payload.code.toUpperCase(),
+  }).first();
   if (existing) {
     throw new Error(`Department code '${payload.code}' is already in use.`);
   }
@@ -701,7 +796,9 @@ export const updateDepartment = async (
   }
 
   if (payload.code && payload.code.toUpperCase() !== department.code) {
-    const existing = await db.orm.public.Department.where({ code: payload.code.toUpperCase() }).first();
+    const existing = await db.orm.public.Department.where({
+      code: payload.code.toUpperCase(),
+    }).first();
     if (existing && existing.id !== id) {
       throw new Error(`Department code '${payload.code}' is already taken.`);
     }
@@ -710,7 +807,8 @@ export const updateDepartment = async (
   const updates: Record<string, any> = { updatedAt: Temporal.Now.instant() };
   if (payload.name !== undefined) updates.name = payload.name;
   if (payload.code !== undefined) updates.code = payload.code.toUpperCase();
-  if (payload.facultyName !== undefined) updates.facultyName = payload.facultyName;
+  if (payload.facultyName !== undefined)
+    updates.facultyName = payload.facultyName;
 
   await db.orm.public.Department.where({ id }).update(updates);
 
@@ -745,10 +843,14 @@ export const createProgram = async (
   clientIp?: string,
   userAgent?: string,
 ) => {
-  const dept = await db.orm.public.Department.where({ id: payload.departmentId }).first();
+  const dept = await db.orm.public.Department.where({
+    id: payload.departmentId,
+  }).first();
   if (!dept) throw new Error("Department not found for provided departmentId.");
 
-  const existing = await db.orm.public.Program.where({ code: payload.code.toUpperCase() }).first();
+  const existing = await db.orm.public.Program.where({
+    code: payload.code.toUpperCase(),
+  }).first();
   if (existing) {
     throw new Error(`Program code '${payload.code}' is already in use.`);
   }
@@ -798,15 +900,21 @@ export const createCourse = async (
   clientIp?: string,
   userAgent?: string,
 ) => {
-  const dept = await db.orm.public.Department.where({ id: payload.departmentId }).first();
+  const dept = await db.orm.public.Department.where({
+    id: payload.departmentId,
+  }).first();
   if (!dept) throw new Error("Department not found for provided departmentId.");
 
   if (payload.programId) {
-    const prog = await db.orm.public.Program.where({ id: payload.programId }).first();
+    const prog = await db.orm.public.Program.where({
+      id: payload.programId,
+    }).first();
     if (!prog) throw new Error("Program not found for provided programId.");
   }
 
-  const existing = await db.orm.public.Course.where({ code: payload.code.toUpperCase() }).first();
+  const existing = await db.orm.public.Course.where({
+    code: payload.code.toUpperCase(),
+  }).first();
   if (existing) {
     throw new Error(`Course code '${payload.code}' is already in use.`);
   }
@@ -882,9 +990,9 @@ export const createSemester = async (
 // 8. Academic Structure: Course Sections
 // ==========================================
 export interface ClassScheduleInput {
-  dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
+  dayOfWeek: string; // 0 = Sunday, 1 = Monday, etc.
   startTime: string; // e.g. "09:00"
-  endTime: string;   // e.g. "10:30"
+  endTime: string; // e.g. "10:30"
   room?: string;
   building?: string;
 }
@@ -911,8 +1019,10 @@ export const createSection = async (
   ]);
 
   if (!course) throw new Error("Course not found with provided courseId.");
-  if (!semester) throw new Error("Semester not found with provided semesterId.");
-  if (!faculty) throw new Error("Faculty member not found with provided facultyId.");
+  if (!semester)
+    throw new Error("Semester not found with provided semesterId.");
+  if (!faculty)
+    throw new Error("Faculty member not found with provided facultyId.");
 
   // Check section name uniqueness for that course + semester
   const existingSection = await db.orm.public.Section.where({
@@ -923,7 +1033,7 @@ export const createSection = async (
 
   if (existingSection) {
     throw new Error(
-      `Section '${payload.name}' already exists for this course and semester.`
+      `Section '${payload.name}' already exists for this course and semester.`,
     );
   }
 
@@ -942,7 +1052,7 @@ export const createSection = async (
       for (const item of payload.schedules) {
         const schedule = await tx.orm.public.ClassSchedule.create({
           sectionId: section.id,
-          dayOfWeek: Number(item.dayOfWeek),
+          dayOfWeek: item.dayOfWeek,
           startTime: item.startTime,
           endTime: item.endTime,
           room: item.room || null,
@@ -1010,16 +1120,20 @@ export const getAllEnrollments = async (filters: EnrollmentQueryFilters) => {
     query.aggregate((a) => ({ count: a.count() })),
     query
       .include("student", (st) =>
-        st.include("user", (u) => u.select("id", "name", "email", "phone"))
+        st
+          .include("user", (u) => u.select("id", "name", "email", "phone"))
           .include("department", (d) => d.select("id", "name", "code"))
-          .include("program", (p) => p.select("id", "name", "code"))
+          .include("program", (p) => p.select("id", "name", "code")),
       )
       .include("section", (sec) =>
-        sec.include("course", (c) => c.select("id", "code", "title", "credit"))
-          .include("semester", (sem) => sem.select("id", "name", "year", "status"))
-          .include("faculty", (f) =>
-            f.include("user", (u) => u.select("id", "name", "email"))
+        sec
+          .include("course", (c) => c.select("id", "code", "title", "credit"))
+          .include("semester", (sem) =>
+            sem.select("id", "name", "year", "status"),
           )
+          .include("faculty", (f) =>
+            f.include("user", (u) => u.select("id", "name", "email")),
+          ),
       )
       .orderBy((e) => e.enrolledAt.desc())
       .offset(skip)
@@ -1029,18 +1143,21 @@ export const getAllEnrollments = async (filters: EnrollmentQueryFilters) => {
 
   let filtered = enrollments;
   if (filters.semesterId) {
-    filtered = filtered.filter((e) => e.section?.semesterId === filters.semesterId);
+    filtered = filtered.filter(
+      (e) => e.section?.semesterId === filters.semesterId,
+    );
   }
   if (filters.courseId) {
     filtered = filtered.filter((e) => e.section?.courseId === filters.courseId);
   }
   if (filters.searchTerm) {
     const term = filters.searchTerm.toLowerCase();
-    filtered = filtered.filter((e) =>
-      e.student?.studentId?.toLowerCase().includes(term) ||
-      e.student?.user?.name?.toLowerCase().includes(term) ||
-      e.section?.course?.code?.toLowerCase().includes(term) ||
-      e.section?.course?.title?.toLowerCase().includes(term)
+    filtered = filtered.filter(
+      (e) =>
+        e.student?.studentId?.toLowerCase().includes(term) ||
+        e.student?.user?.name?.toLowerCase().includes(term) ||
+        e.section?.course?.code?.toLowerCase().includes(term) ||
+        e.section?.course?.title?.toLowerCase().includes(term),
     );
   }
 
@@ -1067,9 +1184,13 @@ export const forceEnrollStudent = async (
   clientIp?: string,
   userAgent?: string,
 ) => {
-  let student = await db.orm.public.Student.where({ id: payload.studentId }).first();
+  let student = await db.orm.public.Student.where({
+    id: payload.studentId,
+  }).first();
   if (!student) {
-    student = await db.orm.public.Student.where({ studentId: payload.studentId }).first();
+    student = await db.orm.public.Student.where({
+      studentId: payload.studentId,
+    }).first();
   }
   if (!student) {
     throw new Error(`Student not found for '${payload.studentId}'.`);
@@ -1092,7 +1213,9 @@ export const forceEnrollStudent = async (
 
   if (existingEnrollment) {
     if (existingEnrollment.status === "ENROLLED") {
-      throw new Error("Student is already active and enrolled in this section.");
+      throw new Error(
+        "Student is already active and enrolled in this section.",
+      );
     }
     // Re-enroll if previously dropped or withdrawn
     await db.orm.public.Enrollment.where({ id: existingEnrollment.id }).update({
@@ -1104,7 +1227,11 @@ export const forceEnrollStudent = async (
       "FORCE_RE_ENROLL_STUDENT",
       "Enrollment",
       existingEnrollment.id,
-      { studentId: student.id, sectionId: section.id, previousStatus: existingEnrollment.status },
+      {
+        studentId: student.id,
+        sectionId: section.id,
+        previousStatus: existingEnrollment.status,
+      },
       existingEnrollment,
       adminUserId,
       clientIp,
@@ -1134,6 +1261,31 @@ export const forceEnrollStudent = async (
     status: "ENROLLED" as const,
     enrolledAt: Temporal.Now.instant(),
   });
+
+  // Automatically generate tuition fee invoice for the student
+  try {
+    const sectionWithDetails = await db.orm.public.Section.where({ id: section.id })
+      .include("course")
+      .include("semester")
+      .first();
+
+    const credit = Number(sectionWithDetails?.course?.credit || 3);
+    const amount = credit > 0 ? credit * 500 : 1500;
+    const defaultDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const year = new Date().getFullYear();
+    const invoiceNo = `INV-${year}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    await db.orm.public.Invoice.create({
+      studentId: student.id,
+      invoiceNo,
+      amount,
+      dueDate: Temporal.Instant.from(defaultDueDate.toISOString()),
+      status: "PENDING" as any,
+      createdAt: Temporal.Now.instant(),
+    });
+  } catch (invErr) {
+    console.error("Failed to auto-create invoice during admin force-enrollment:", invErr);
+  }
 
   await recordAuditLog(
     "FORCE_ENROLL_STUDENT",
@@ -1195,13 +1347,16 @@ export const getAllPayments = async (filters: PaymentQueryFilters) => {
 
   const [totalRes, totalAmountRes, payments] = await Promise.all([
     query.aggregate((a) => ({ count: a.count() })),
-    query.where({ status: "SUCCESS" as const }).aggregate((a) => ({ total: a.sum("amount") })),
+    query
+      .where({ status: "SUCCESS" as const })
+      .aggregate((a) => ({ total: a.sum("amount") })),
     query
       .include("invoice", (inv) =>
         inv.include("student", (st) =>
-          st.include("user", (u) => u.select("id", "name", "email", "phone"))
-            .include("department", (d) => d.select("id", "name", "code"))
-        )
+          st
+            .include("user", (u) => u.select("id", "name", "email", "phone"))
+            .include("department", (d) => d.select("id", "name", "code")),
+        ),
       )
       .orderBy((p) => p.createdAt.desc())
       .offset(skip)
@@ -1211,9 +1366,10 @@ export const getAllPayments = async (filters: PaymentQueryFilters) => {
 
   let filtered = payments;
   if (filters.studentId) {
-    filtered = filtered.filter((p) =>
-      p.invoice?.studentId === filters.studentId ||
-      p.invoice?.student?.studentId === filters.studentId
+    filtered = filtered.filter(
+      (p) =>
+        p.invoice?.studentId === filters.studentId ||
+        p.invoice?.student?.studentId === filters.studentId,
     );
   }
 
@@ -1249,15 +1405,21 @@ export const generateReports = async (filters: ReportQueryFilters) => {
   // ---------------- Enrollment Report ----------------
   if (reportType === "enrollment" || reportType === "all") {
     const [allEnrollments, allSections] = await Promise.all([
-      db.orm.public.Enrollment
-        .include("section", (s) =>
-          s.include("course", (c) => c.select("id", "code", "title", "departmentId"))
-            .include("semester", (sem) => sem.select("id", "name", "year", "status"))
+      db.orm.public.Enrollment.include("section", (s) =>
+        s
+          .include("course", (c) =>
+            c.select("id", "code", "title", "departmentId"),
+          )
+          .include("semester", (sem) =>
+            sem.select("id", "name", "year", "status"),
+          ),
+      ).all(),
+      db.orm.public.Section.include("course", (c) =>
+        c.select("id", "code", "title", "departmentId"),
+      )
+        .include("semester", (sem) =>
+          sem.select("id", "name", "year", "status"),
         )
-        .all(),
-      db.orm.public.Section
-        .include("course", (c) => c.select("id", "code", "title", "departmentId"))
-        .include("semester", (sem) => sem.select("id", "name", "year", "status"))
         .all(),
     ]);
 
@@ -1271,7 +1433,7 @@ export const generateReports = async (filters: ReportQueryFilters) => {
     // Capacity utilization per section
     const sectionUtilization = allSections.map((sec) => {
       const enrolledCount = allEnrollments.filter(
-        (e) => e.sectionId === sec.id && e.status === "ENROLLED"
+        (e) => e.sectionId === sec.id && e.status === "ENROLLED",
       ).length;
       return {
         sectionId: sec.id,
@@ -1281,16 +1443,24 @@ export const generateReports = async (filters: ReportQueryFilters) => {
         semester: sec.semester?.name,
         capacity: sec.capacity,
         enrolled: enrolledCount,
-        utilizationRate: sec.capacity > 0 ? Math.round((enrolledCount / sec.capacity) * 100) : 0,
+        utilizationRate:
+          sec.capacity > 0
+            ? Math.round((enrolledCount / sec.capacity) * 100)
+            : 0,
       };
     });
 
     result.enrollmentReport = {
       totalEnrollments: allEnrollments.length,
       statusBreakdown,
-      retentionRate: allEnrollments.length > 0
-        ? Math.round(((statusBreakdown.ENROLLED + statusBreakdown.COMPLETED) / allEnrollments.length) * 100)
-        : 0,
+      retentionRate:
+        allEnrollments.length > 0
+          ? Math.round(
+              ((statusBreakdown.ENROLLED + statusBreakdown.COMPLETED) /
+                allEnrollments.length) *
+                100,
+            )
+          : 0,
       sectionsCount: allSections.length,
       sectionUtilization,
     };
@@ -1303,15 +1473,25 @@ export const generateReports = async (filters: ReportQueryFilters) => {
       db.orm.public.Invoice.all(),
     ]);
 
-    const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const totalInvoiced = invoices.reduce(
+      (sum, inv) => sum + (inv.amount || 0),
+      0,
+    );
     const paidInvoices = invoices.filter((i) => i.status === "PAID");
     const pendingInvoices = invoices.filter((i) => i.status === "PENDING");
-    const totalPending = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const totalPending = pendingInvoices.reduce(
+      (sum, inv) => sum + (inv.amount || 0),
+      0,
+    );
 
     const successfulPayments = payments.filter((p) => p.status === "SUCCESS");
-    const totalCollected = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalCollected = successfulPayments.reduce(
+      (sum, p) => sum + (p.amount || 0),
+      0,
+    );
 
-    const paymentsByMethod: Record<string, { count: number; total: number }> = {};
+    const paymentsByMethod: Record<string, { count: number; total: number }> =
+      {};
     for (const p of payments) {
       const entry = paymentsByMethod[p.method] ?? { count: 0, total: 0 };
       entry.count += 1;
@@ -1325,7 +1505,10 @@ export const generateReports = async (filters: ReportQueryFilters) => {
       totalInvoiced,
       totalCollected,
       totalPending,
-      collectionRate: totalInvoiced > 0 ? Math.round((totalCollected / totalInvoiced) * 100) : 0,
+      collectionRate:
+        totalInvoiced > 0
+          ? Math.round((totalCollected / totalInvoiced) * 100)
+          : 0,
       invoicesSummary: {
         total: invoices.length,
         paid: paidInvoices.length,
@@ -1338,12 +1521,11 @@ export const generateReports = async (filters: ReportQueryFilters) => {
 
   // ---------------- Academic Report ----------------
   if (reportType === "academic" || reportType === "all") {
-    const results = await db.orm.public.Result
-      .include("student", (st) =>
-        st.include("user", (u) => u.select("id", "name"))
-          .include("department", (d) => d.select("id", "name", "code"))
-      )
-      .all();
+    const results = await db.orm.public.Result.include("student", (st) =>
+      st
+        .include("user", (u) => u.select("id", "name"))
+        .include("department", (d) => d.select("id", "name", "code")),
+    ).all();
 
     const gradeDistribution: Record<string, number> = {};
     let totalGradePoints = 0;
@@ -1353,13 +1535,18 @@ export const generateReports = async (filters: ReportQueryFilters) => {
       totalGradePoints += r.gradePoint || 0;
     }
 
-    const averageGPA = results.length > 0
-      ? Number((totalGradePoints / results.length).toFixed(2))
-      : 0;
+    const averageGPA =
+      results.length > 0
+        ? Number((totalGradePoints / results.length).toFixed(2))
+        : 0;
 
     // High performers (gradePoint >= 3.75) and at-risk (gradePoint < 2.0)
-    const highPerformers = results.filter((r) => (r.gradePoint || 0) >= 3.75).length;
-    const atRiskStudents = results.filter((r) => (r.gradePoint || 0) < 2.0).length;
+    const highPerformers = results.filter(
+      (r) => (r.gradePoint || 0) >= 3.75,
+    ).length;
+    const atRiskStudents = results.filter(
+      (r) => (r.gradePoint || 0) < 2.0,
+    ).length;
 
     result.academicReport = {
       totalResultsRecorded: results.length,

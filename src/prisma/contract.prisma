@@ -370,13 +370,14 @@ model Result {
 // ============================================================
 // Class Schedule table
 // ============================================================
+
 model ClassSchedule {
   id          String @id @default(uuid())
 
   sectionId   String
 
-  dayOfWeek   Int
-  startTime   String
+  dayOfWeek   String
+  startTime   String 
   endTime     String
 
   room        String?

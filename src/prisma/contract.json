@@ -752,7 +752,7 @@
               "dayOfWeek": {
                 "nullable": false,
                 "type": {
-                  "codecId": "pg/int4@1",
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -3462,8 +3462,8 @@
                   "nullable": true
                 },
                 "dayOfWeek": {
-                  "codecId": "pg/int4@1",
-                  "nativeType": "int4",
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
                   "nullable": false
                 },
                 "endTime": {
@@ -5267,7 +5267,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "5d2a4ff95d1621b626802cf97730a9841299123884e08fde74d489a796c5d19d"
+    "storageHash": "512f2f40678e28ba257205f0b603f5f309beea9b0d58173af305182f81151468"
   },
   "execution": {
     "executionHash": "fda2f60c4136471bcaf88f23ada87a76c52016a8111e59a16b957824a3ff3eb6",

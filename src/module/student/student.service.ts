@@ -87,12 +87,14 @@ const createProfile = async (
     db.orm.public.Program.where({ id: payload.programId }).first(),
   ]);
 
-  if (!dept) throw new Error("Department not found with provided departmentId.");
+  if (!dept)
+    throw new Error("Department not found with provided departmentId.");
   if (!prog) throw new Error("Program not found with provided programId.");
 
   let studentId = payload.studentId;
   if (!studentId) {
-    const admissionYear = Number(payload.admissionYear) || new Date().getFullYear();
+    const admissionYear =
+      Number(payload.admissionYear) || new Date().getFullYear();
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     studentId = `STU${admissionYear}${randomSuffix}`;
   } else {
@@ -235,6 +237,72 @@ const getSchedule = async (studentId: string) => {
   };
 };
 
+const generateUniqueInvoiceNo = async (): Promise<string> => {
+  const year = new Date().getFullYear();
+  for (let i = 0; i < 5; i++) {
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const invoiceNo = `INV-${year}-${randomSuffix}`;
+    const exists = await db.orm.public.Invoice.where({ invoiceNo }).first();
+    if (!exists) {
+      return invoiceNo;
+    }
+  }
+  return `INV-${year}-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+};
+
+const createInvoiceForEnrollment = async (studentId: string, section: any) => {
+  const credit = Number(section?.course?.credit || 3);
+  const amount = credit > 0 ? credit * 500 : 1500;
+
+  // 30 days due date or semester end date, whichever comes first (if in the future)
+  const defaultDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  let dueDateInstant = toInstant(defaultDueDate);
+
+  if (section?.semester?.endDate) {
+    const semesterEnd = new Date(section.semester.endDate);
+    if (semesterEnd > new Date() && semesterEnd < defaultDueDate) {
+      dueDateInstant = toInstant(semesterEnd);
+    }
+  }
+
+  const invoiceNo = await generateUniqueInvoiceNo();
+
+  const invoice = await db.orm.public.Invoice.create({
+    studentId,
+    invoiceNo,
+    amount,
+    dueDate: dueDateInstant,
+    status: "PENDING" as any,
+    createdAt: toInstant(),
+  });
+
+  // Also send a notification to the student about the new invoice
+  try {
+    const student = await db.orm.public.Student.where({
+      id: studentId,
+    }).first();
+    if (student?.userId) {
+      const courseTitle =
+        section?.course?.title || section?.name || "course section";
+      const courseCode = section?.course?.code
+        ? ` (${section.course.code})`
+        : "";
+      await db.orm.public.Notification.create({
+        userId: student.userId,
+        title: "New Tuition Fee Invoice Issued",
+        message: `An invoice #${invoice.invoiceNo} of $${invoice.amount} has been issued for enrolling in ${courseTitle}${courseCode}. Please settle the payment by the due date.`,
+        type: "INFO" as any,
+        isRead: false,
+        createdAt: toInstant(),
+      });
+    }
+  } catch (err) {
+    console.error("Failed to create notification for invoice:", err);
+  }
+
+  return invoice;
+};
+
 const enrollCourse = async (studentId: string, sectionId: string) => {
   if (!studentId) {
     throw new Error("Student profile record not found.");
@@ -281,7 +349,14 @@ const enrollCourse = async (studentId: string, sectionId: string) => {
       status: "ENROLLED" as any,
       enrolledAt: toInstant(),
     });
-    return updated;
+
+    // Create an invoice for re-enrollment
+    const invoice = await createInvoiceForEnrollment(studentId, section);
+
+    return {
+      ...updated,
+      invoice,
+    };
   }
 
   // Check if enrolled in another section of the same course in the same semester
@@ -312,7 +387,13 @@ const enrollCourse = async (studentId: string, sectionId: string) => {
     enrolledAt: toInstant(),
   });
 
-  return enrollment;
+  // Automatically create invoice for this enrollment
+  const invoice = await createInvoiceForEnrollment(studentId, section);
+
+  return {
+    ...enrollment,
+    invoice,
+  };
 };
 
 const dropEnrollment = async (
@@ -383,9 +464,7 @@ const getAttendance = async (
   const absent = records.filter(
     (r) => r.status.toUpperCase() === "ABSENT",
   ).length;
-  const late = records.filter(
-    (r) => r.status.toUpperCase() === "LATE",
-  ).length;
+  const late = records.filter((r) => r.status.toUpperCase() === "LATE").length;
 
   const percentage =
     total > 0 ? ((present / total) * 100).toFixed(2) + "%" : "N/A";
@@ -411,9 +490,7 @@ const getResults = async (studentId: string) => {
     .include("enrollment", (e) =>
       e.include("section", (s) =>
         s
-          .include("course", (c) =>
-            c.select("id", "code", "title", "credit"),
-          )
+          .include("course", (c) => c.select("id", "code", "title", "credit"))
           .include("semester", (sem) =>
             sem.select("id", "name", "year", "status"),
           ),
@@ -442,9 +519,7 @@ const getTranscript = async (studentId: string) => {
     .include("enrollment", (e) =>
       e.include("section", (s) =>
         s
-          .include("course", (c) =>
-            c.select("id", "code", "title", "credit"),
-          )
+          .include("course", (c) => c.select("id", "code", "title", "credit"))
           .include("semester", (sem) =>
             sem.select("id", "name", "year", "status"),
           ),
@@ -582,9 +657,7 @@ const getAssignments = async (studentId: string, status?: string) => {
     .include("section", (s) =>
       s.include("course", (c) => c.select("id", "code", "title")),
     )
-    .include("faculty", (f) =>
-      f.include("user", (u) => u.select("id", "name")),
-    )
+    .include("faculty", (f) => f.include("user", (u) => u.select("id", "name")))
     .orderBy((a) => a.deadline.asc())
     .all();
 
@@ -624,8 +697,7 @@ const getAssignments = async (studentId: string, status?: string) => {
 
   if (status) {
     return result.filter(
-      (item) =>
-        item.submissionStatus.toUpperCase() === status.toUpperCase(),
+      (item) => item.submissionStatus.toUpperCase() === status.toUpperCase(),
     );
   }
 
@@ -665,11 +737,10 @@ const submitAssignment = async (
     );
   }
 
-  const existingSubmission =
-    await db.orm.public.AssignmentSubmission.where({
-      assignmentId,
-      studentId,
-    }).first();
+  const existingSubmission = await db.orm.public.AssignmentSubmission.where({
+    assignmentId,
+    studentId,
+  }).first();
 
   if (existingSubmission) {
     const updated = await db.orm.public.AssignmentSubmission.where({
@@ -696,10 +767,39 @@ const getInvoices = async (studentId: string) => {
     throw new Error("Student profile record not found.");
   }
 
-  const invoices = await db.orm.public.Invoice.where({ studentId })
+  let invoices = await db.orm.public.Invoice.where({ studentId })
     .include("payments", (p) => p.orderBy((pay) => pay.createdAt.desc()))
     .orderBy((i) => i.createdAt.desc())
     .all();
+
+  // If student has active enrollments but fewer non-cancelled invoices, ensure invoices exist
+  const activeEnrollments = await db.orm.public.Enrollment.where({
+    studentId,
+    status: "ENROLLED" as any,
+  })
+    .include("section", (s) => s.include("course").include("semester"))
+    .all();
+
+  const nonCancelledInvoices = invoices.filter((i) => i.status !== "CANCELLED");
+
+  if (activeEnrollments.length > nonCancelledInvoices.length) {
+    const missingCount = activeEnrollments.length - nonCancelledInvoices.length;
+    for (
+      let idx = 0;
+      idx < missingCount && idx < activeEnrollments.length;
+      idx++
+    ) {
+      const enrollment = activeEnrollments[idx];
+      if (enrollment!.section) {
+        await createInvoiceForEnrollment(studentId, enrollment!.section);
+      }
+    }
+
+    invoices = await db.orm.public.Invoice.where({ studentId })
+      .include("payments", (p) => p.orderBy((pay) => pay.createdAt.desc()))
+      .orderBy((i) => i.createdAt.desc())
+      .all();
+  }
 
   return invoices;
 };
@@ -735,9 +835,7 @@ const getNotifications = async (userId: string, unreadOnly?: boolean) => {
     query = query.where((n) => n.isRead.eq(false));
   }
 
-  const notifications = await query
-    .orderBy((n) => n.createdAt.desc())
-    .all();
+  const notifications = await query.orderBy((n) => n.createdAt.desc()).all();
 
   const allNotifications = await db.orm.public.Notification.where((n) =>
     n.userId.eq(userId),
@@ -785,7 +883,11 @@ const createPaymentCheckoutSession = async (
     .first();
   const customerEmail = student?.user?.email;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5000";
+  // Backend URL for Stripe redirect handlers (payment/success, payment/cancel)
+  const backendUrl =
+    process.env.APP_URL ||
+    `http://localhost:${process.env.PORT || 5000}`;
 
   // Dynamic line item based on invoice amount
   const line_items = [
@@ -812,8 +914,8 @@ const createPaymentCheckoutSession = async (
       invoiceId: invoice.id,
       studentId,
     },
-    success_url: `${frontendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${frontendUrl}/payment/cancel?invoice_id=${invoice.id}`,
+    success_url: `${backendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${backendUrl}/payment/cancel?invoice_id=${invoice.id}`,
   });
 
   return {

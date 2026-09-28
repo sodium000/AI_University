@@ -7,6 +7,8 @@ import bcrypt from "bcryptjs";
 import config from "../../../config";
 import { jwtUtils } from "../../../utils/createJwtToken";
 import { SignOptions } from "jsonwebtoken";
+import { AppError } from "../../../errors/AppError";
+import { ErrorCode } from "../../../errors/errorCodes";
 
 interface CreateUserPayloade {
   name: string;
@@ -23,7 +25,11 @@ const verifyUser = async (payloade: CreateUserPayloade) => {
   }).first();
 
   if (isUserExists) {
-    throw new Error("User with this email already exists");
+    throw AppError.conflict(
+      "An account with this email already exists. Try logging in instead.",
+      ErrorCode.AUTH_EMAIL_ALREADY_EXISTS,
+      { hint: "Use POST /api/v1/login if you already registered." },
+    );
   }
 
   const hashedPassword = await bcrypt.hash(
@@ -64,7 +70,9 @@ const verifyUser = async (payloade: CreateUserPayloade) => {
   });
 
   if (!info.messageId) {
-    throw new Error("Failed to send email");
+    throw AppError.internal("Failed to send verification email.", {
+      hint: "Check SMTP settings (EMAIL_SENDER, APP_PASSWORD) and Nodemailer connectivity.",
+    });
   }
 };
 
@@ -76,15 +84,24 @@ interface RegestrtionUserPayloade {
 const RegestrtionUser = async (payloade: RegestrtionUserPayloade) => {
   const isUserExists = await client.get(`user:${payloade.email}`);
   if (!isUserExists) {
-    throw new Error("You get time out. Try again");
+    throw AppError.badRequest(
+      "Registration session expired (20 minutes). Start again from verifyUser.",
+      ErrorCode.AUTH_REGISTRATION_SESSION_EXPIRED,
+    );
   }
-  // check otp in redis database
   const correctOtp = await client.get(`otp:${payloade.email}`);
   if (!correctOtp) {
-    throw new Error("Time Out Resend the otp");
+    throw AppError.badRequest(
+      "OTP expired (5 minutes). Request a new code via verifyUser.",
+      ErrorCode.AUTH_OTP_EXPIRED,
+    );
   }
   if (correctOtp !== payloade.otp) {
-    throw new Error("Invalid OTP");
+    throw AppError.badRequest(
+      "The OTP you entered is incorrect.",
+      ErrorCode.AUTH_OTP_INVALID,
+      { hint: "Use the latest 6-digit code from your email." },
+    );
   }
 
   const user = JSON.parse(isUserExists);

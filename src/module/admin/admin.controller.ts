@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth";
 import { adminService } from "./admin.service";
+import { sendFailure } from "../../utils/apiResponse";
 
 // 1. Dashboard Stats
 export const getDashboardStats = async (req: AuthRequest, res: Response) => {
@@ -12,13 +13,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       message: "Admin dashboard stats retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to fetch dashboard statistics",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to fetch dashboard statistics");
   }
 };
 
@@ -32,13 +28,8 @@ export const getAllStudents = async (req: AuthRequest, res: Response) => {
       message: "Students list retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve students list",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve students list");
   }
 };
 
@@ -56,13 +47,8 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       message: "Student account created successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create student account",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create student account");
   }
 };
 
@@ -82,13 +68,8 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       message: "Student profile updated successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to update student profile",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to update student profile");
   }
 };
 
@@ -109,13 +90,8 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
       message: data.message || "Student processed successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to deactivate or delete student",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to deactivate or delete student");
   }
 };
 
@@ -129,13 +105,8 @@ export const getAllFaculty = async (req: AuthRequest, res: Response) => {
       message: "Faculty list retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve faculty list",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve faculty list");
   }
 };
 
@@ -153,13 +124,8 @@ export const createFaculty = async (req: AuthRequest, res: Response) => {
       message: "Faculty account created successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create faculty account",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create faculty account");
   }
 };
 
@@ -178,13 +144,8 @@ export const createDepartment = async (req: AuthRequest, res: Response) => {
       message: "Department created successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create department",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create department");
   }
 };
 
@@ -204,13 +165,8 @@ export const updateDepartment = async (req: AuthRequest, res: Response) => {
       message: "Department updated successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to update department",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to update department");
   }
 };
 
@@ -229,13 +185,8 @@ export const createProgram = async (req: AuthRequest, res: Response) => {
       message: "Degree program created successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create program",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create program");
   }
 };
 
@@ -254,13 +205,8 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       message: "Course created successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create course",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create course");
   }
 };
 
@@ -279,13 +225,8 @@ export const createSemester = async (req: AuthRequest, res: Response) => {
       message: "Semester created successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create semester",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create semester");
   }
 };
 
@@ -304,13 +245,8 @@ export const createSection = async (req: AuthRequest, res: Response) => {
       message: "Course section created successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create course section",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create course section");
   }
 };
 
@@ -324,13 +260,8 @@ export const getAllEnrollments = async (req: AuthRequest, res: Response) => {
       message: "Enrollments list retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve enrollments",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve enrollments");
   }
 };
 
@@ -348,13 +279,8 @@ export const forceEnrollStudent = async (req: AuthRequest, res: Response) => {
       message: data.message || "Student enrolled successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to force enroll student",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to force enroll student");
   }
 };
 
@@ -368,13 +294,8 @@ export const getAllPayments = async (req: AuthRequest, res: Response) => {
       message: "Payments list retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve payments",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve payments");
   }
 };
 
@@ -388,13 +309,8 @@ export const generateReports = async (req: AuthRequest, res: Response) => {
       message: "System reports generated successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to generate system reports",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to generate system reports");
   }
 };
 

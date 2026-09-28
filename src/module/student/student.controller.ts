@@ -1,462 +1,163 @@
 import { Response } from "express";
+import { AppError } from "../../errors/AppError";
+import { ErrorCode } from "../../errors/errorCodes";
 import { AuthRequest } from "../../middleware/auth";
+import { asyncHandler } from "../../utils/asyncHandler";
+import { sendSuccess } from "../../utils/apiResponse";
 import { studentService } from "./student.service";
 
-const getProfile = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    const profile = await studentService.getProfile(userId);
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Student profile fetched successfully",
-      data: profile,
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to fetch student profile",
-      data: null,
-    });
-  }
-};
-
-const createProfile = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        statusCode: 401,
-        message: "Unauthorized! User context not found.",
-        data: null,
-      });
-    }
-
-    const payload = req.body;
-    const profile = await studentService.createProfile(userId, payload);
-
-    return res.status(201).json({
-      success: true,
-      statusCode: 201,
-      message: "Student profile created successfully",
-      data: profile,
-    });
-  } catch (error: any) {
-    const isClientError =
-      error.message?.includes("already exists") ||
-      error.message?.includes("required") ||
-      error.message?.includes("not found");
-    const statusCode = isClientError ? 400 : 500;
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to create student profile",
-      data: null,
-    });
-  }
-};
-
-const updateProfile = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    const studentId = req.student?.id;
-    const payload = req.body;
-
-    const updated = await studentService.updateProfile(
-      userId,
-      studentId,
-      payload,
+const requireUserId = (req: AuthRequest) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw AppError.unauthorized(
+      "Unauthorized: authenticated user context is missing.",
+      ErrorCode.AUTH_CONTEXT_MISSING,
+      {
+        hint: "Ensure the Authorization header or accessToken cookie is sent with a valid STUDENT token.",
+      },
     );
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Student profile updated successfully",
-      data: updated,
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to update profile",
-      data: null,
-    });
   }
+  return userId;
 };
 
-const getEnrolledCourses = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const { status } = req.query;
+const getProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const profile = await studentService.getProfile(req.user?.id);
+  sendSuccess(res, 200, "Student profile fetched successfully", profile);
+});
 
-    const courses = await studentService.getEnrolledCourses(
-      studentId,
-      status as string,
-    );
+const createProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = requireUserId(req);
+  const profile = await studentService.createProfile(userId, req.body);
+  sendSuccess(res, 201, "Student profile created successfully", profile);
+});
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Enrolled courses retrieved successfully",
-      data: courses,
-    });
-  } catch (error: any) {
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
-      success: false,
-      statusCode: error.message.includes("not found") ? 404 : 500,
-      message: error.message || "Failed to retrieve enrolled courses",
-      data: null,
-    });
-  }
-};
+const updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const updated = await studentService.updateProfile(
+    req.user?.id,
+    req.student?.id,
+    req.body,
+  );
+  sendSuccess(res, 200, "Student profile updated successfully", updated);
+});
 
-const getSchedule = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const schedule = await studentService.getSchedule(studentId);
+const getEnrolledCourses = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const courses = await studentService.getEnrolledCourses(
+    req.student?.id,
+    req.query.status as string,
+  );
+  sendSuccess(res, 200, "Enrolled courses retrieved successfully", courses);
+});
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Schedule retrieved successfully",
-      data: schedule,
-    });
-  } catch (error: any) {
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
-      success: false,
-      statusCode: error.message.includes("not found") ? 404 : 500,
-      message: error.message || "Failed to retrieve schedule",
-      data: null,
-    });
-  }
-};
+const getSchedule = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const schedule = await studentService.getSchedule(req.student?.id);
+  sendSuccess(res, 200, "Schedule retrieved successfully", schedule);
+});
 
-const enrollCourse = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const { sectionId } = req.body;
+const enrollCourse = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const enrollment = await studentService.enrollCourse(
+    req.student?.id,
+    req.body.sectionId,
+  );
+  sendSuccess(res, 201, "Successfully enrolled in course section", enrollment);
+});
 
-    const enrollment = await studentService.enrollCourse(studentId, sectionId);
+const dropEnrollment = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const dropped = await studentService.dropEnrollment(
+    req.student?.id,
+    id as string,
+  );
+  sendSuccess(res, 200, "Enrollment successfully dropped", dropped);
+});
 
-    return res.status(201).json({
-      success: true,
-      statusCode: 201,
-      message: "Successfully enrolled in course section",
-      data: enrollment,
-    });
-  } catch (error: any) {
-    const isBadRequest =
-      error.message.includes("capacity") ||
-      error.message.includes("already") ||
-      error.message.includes("required");
+const getAttendance = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const attendance = await studentService.getAttendance(req.student?.id, {
+    status: req.query.status as string,
+    startDate: req.query.startDate as string,
+    endDate: req.query.endDate as string,
+  });
+  sendSuccess(res, 200, "Attendance records retrieved successfully", attendance);
+});
 
-    return res.status(isBadRequest ? 400 : 500).json({
-      success: false,
-      statusCode: isBadRequest ? 400 : 500,
-      message: error.message || "Enrollment failed",
-      data: null,
-    });
-  }
-};
+const getResults = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const results = await studentService.getResults(req.student?.id);
+  sendSuccess(res, 200, "Results retrieved successfully", results);
+});
 
-const dropEnrollment = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+const getTranscript = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const transcript = await studentService.getTranscript(req.student?.id);
+  sendSuccess(res, 200, "Academic transcript retrieved successfully", transcript);
+});
 
-    const dropped = await studentService.dropEnrollment(studentId, id as string);
+const getAssignments = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const assignments = await studentService.getAssignments(
+    req.student?.id,
+    req.query.status as string,
+  );
+  sendSuccess(res, 200, "Assignments retrieved successfully", assignments);
+});
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Enrollment successfully dropped",
-      data: dropped,
-    });
-  } catch (error: any) {
-    const isNotFound = error.message.includes("not found");
-    const isBadRequest = error.message.includes("already");
+const submitAssignment = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const submission = await studentService.submitAssignment(
+    req.student?.id,
+    id as string,
+    req.body,
+  );
+  sendSuccess(res, 200, "Assignment submitted successfully", submission);
+});
 
-    const status = isNotFound ? 404 : isBadRequest ? 400 : 500;
+const getInvoices = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const invoices = await studentService.getInvoices(req.student?.id);
+  sendSuccess(res, 200, "Invoices retrieved successfully", invoices);
+});
 
-    return res.status(status).json({
-      success: false,
-      statusCode: status,
-      message: error.message || "Failed to drop enrollment",
-      data: null,
-    });
-  }
-};
+const getPayments = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const payments = await studentService.getPayments(req.student?.id);
+  sendSuccess(res, 200, "Payments retrieved successfully", payments);
+});
 
-const getAttendance = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const { status, startDate, endDate } = req.query;
+const getNotifications = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const notifications = await studentService.getNotifications(
+    req.user?.id,
+    req.query.unreadOnly === "true",
+  );
+  sendSuccess(res, 200, "Notifications retrieved successfully", notifications);
+});
 
-    const attendance = await studentService.getAttendance(studentId, {
-      status: status as string,
-      startDate: startDate as string,
-      endDate: endDate as string,
-    });
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Attendance records retrieved successfully",
-      data: attendance,
-    });
-  } catch (error: any) {
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
-      success: false,
-      statusCode: error.message.includes("not found") ? 404 : 500,
-      message: error.message || "Failed to retrieve attendance",
-      data: null,
-    });
-  }
-};
-
-const getResults = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const results = await studentService.getResults(studentId);
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Results retrieved successfully",
-      data: results,
-    });
-  } catch (error: any) {
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
-      success: false,
-      statusCode: error.message.includes("not found") ? 404 : 500,
-      message: error.message || "Failed to retrieve results",
-      data: null,
-    });
-  }
-};
-
-const getTranscript = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const transcript = await studentService.getTranscript(studentId);
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Academic transcript retrieved successfully",
-      data: transcript,
-    });
-  } catch (error: any) {
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
-      success: false,
-      statusCode: error.message.includes("not found") ? 404 : 500,
-      message: error.message || "Failed to retrieve transcript",
-      data: null,
-    });
-  }
-};
-
-const getAssignments = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const { status } = req.query;
-
-    const assignments = await studentService.getAssignments(
-      studentId,
-      status as string,
-    );
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Assignments retrieved successfully",
-      data: assignments,
-    });
-  } catch (error: any) {
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
-      success: false,
-      statusCode: error.message.includes("not found") ? 404 : 500,
-      message: error.message || "Failed to retrieve assignments",
-      data: null,
-    });
-  }
-};
-
-const submitAssignment = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const payload = req.body;
-
-    const submission = await studentService.submitAssignment(
-      studentId,
-      id as string,
-      payload,
-    );
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Assignment submitted successfully",
-      data: submission,
-    });
-  } catch (error: any) {
-    const isNotFound = error.message.includes("not found");
-    const isForbidden = error.message.includes("not enrolled");
-    const isBadRequest = error.message.includes("required");
-
-    const status = isNotFound ? 404 : isForbidden ? 403 : isBadRequest ? 400 : 500;
-
-    return res.status(status).json({
-      success: false,
-      statusCode: status,
-      message: error.message || "Failed to submit assignment",
-      data: null,
-    });
-  }
-};
-
-const getInvoices = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const invoices = await studentService.getInvoices(studentId);
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Invoices retrieved successfully",
-      data: invoices,
-    });
-  } catch (error: any) {
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
-      success: false,
-      statusCode: error.message.includes("not found") ? 404 : 500,
-      message: error.message || "Failed to retrieve invoices",
-      data: null,
-    });
-  }
-};
-
-const getPayments = async (req: AuthRequest, res: Response) => {
-  try {
-    const studentId = req.student?.id;
-    const payments = await studentService.getPayments(studentId);
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Payments retrieved successfully",
-      data: payments,
-    });
-  } catch (error: any) {
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
-      success: false,
-      statusCode: error.message.includes("not found") ? 404 : 500,
-      message: error.message || "Failed to retrieve payments",
-      data: null,
-    });
-  }
-};
-
-const getNotifications = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    const { unreadOnly } = req.query;
-
-    const notifications = await studentService.getNotifications(
-      userId,
-      unreadOnly === "true",
-    );
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Notifications retrieved successfully",
-      data: notifications,
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve notifications",
-      data: null,
-    });
-  }
-};
-
-const createPaymentCheckoutSession = async (
-  req: AuthRequest,
-  res: Response,
-) => {
-  try {
-    const studentId = req.student?.id;
+const createPaymentCheckoutSession = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
     const invoiceId = req.body?.invoiceId || req.params?.id;
-
     if (!invoiceId) {
-      return res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "invoiceId is required",
-        data: null,
+      throw AppError.badRequest("invoiceId is required in the request body.", undefined, {
+        hint: "Pass { \"invoiceId\": \"<uuid>\" } when creating a Stripe checkout session.",
       });
     }
 
     const data = await studentService.createPaymentCheckoutSession(
-      studentId,
+      req.student?.id,
       invoiceId,
     );
+    sendSuccess(res, 200, "Stripe checkout session created successfully", data);
+  },
+);
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Stripe checkout session created successfully",
-      data,
-    });
-  } catch (error: any) {
-    const statusCode = error.message?.includes("not found") ? 404 : 400;
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to create checkout session",
-      data: null,
+const verifyPayment = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const sessionId = req.body?.sessionId || (req.query?.sessionId as string);
+  if (!sessionId) {
+    throw AppError.badRequest("sessionId is required.", undefined, {
+      hint: "Pass sessionId from the Stripe checkout redirect or webhook payload.",
     });
   }
-};
 
-const verifyPayment = async (req: AuthRequest, res: Response) => {
-  try {
-    const sessionId = req.body?.sessionId || (req.query?.sessionId as string);
-
-    if (!sessionId) {
-      return res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "sessionId is required",
-        data: null,
-      });
-    }
-
-    const data = await studentService.verifyAndFulfillPayment(sessionId);
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: data.message || "Payment processed successfully",
-      data,
-    });
-  } catch (error: any) {
-    const statusCode = error.message?.includes("not found") ? 404 : 400;
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to verify payment",
-      data: null,
-    });
-  }
-};
+  const data = await studentService.verifyAndFulfillPayment(sessionId);
+  sendSuccess(
+    res,
+    200,
+    data.message || "Payment processed successfully",
+    data,
+  );
+});
 
 export const studentController = {
   getProfile,

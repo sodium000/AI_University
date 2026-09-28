@@ -1,54 +1,42 @@
 import { Request, Response } from "express";
+import { asyncHandler } from "../../../utils/asyncHandler";
+import { sendSuccess } from "../../../utils/apiResponse";
 import { authService } from "./regestration.service";
 
-const UserVarify = async (req: Request, res: Response) => {
-  const payload = req.body;
+const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+    maxAge: 1000 * 60 * 60 * 24,
+  });
 
-  try {
-    const result = await authService.verifyUser(payload);
-    res.status(200).json({
-      message: "Otp send your mail. Please verifyed your Id",
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  });
 };
 
-const RegestrationUser = async (req: Request, res: Response) => {
-  const payload = req.body;
+const UserVarify = asyncHandler(async (req: Request, res: Response) => {
+  await authService.verifyUser(req.body);
+  sendSuccess(
+    res,
+    200,
+    "Verification OTP sent to your email. Complete registration with POST /api/v1/auth/register.",
+    null,
+  );
+});
 
-  try {
-    const { accessToken, refreshToken } =
-      await authService.RegestrtionUser(payload);
-
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24, // 24 hour or 1 day
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 day
-    });
-
-    res.send({
-      success: true,
-      statusCode: 200,
-      message: "User Regestration successfully",
-      data: { accessToken, refreshToken },
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
+const RegestrationUser = asyncHandler(async (req: Request, res: Response) => {
+  const { accessToken, refreshToken } = await authService.RegestrtionUser(req.body);
+  setAuthCookies(res, accessToken, refreshToken);
+  sendSuccess(res, 200, "User registration completed successfully", {
+    accessToken,
+    refreshToken,
+  });
+});
 
 export const authController = {
   UserVarify,

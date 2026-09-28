@@ -6,6 +6,8 @@ import path from "path";
 import ejs from "ejs";
 import { db } from "../../../prisma/db";
 import bcrypt from "bcryptjs";
+import { AppError } from "../../../errors/AppError";
+import { ErrorCode } from "../../../errors/errorCodes";
 
 const forgotPassword = async (payload: { email: string }) => {
   const { email } = payload;
@@ -13,23 +15,38 @@ const forgotPassword = async (payload: { email: string }) => {
   const user = await db.orm.public.User.where({ email }).first();
 
   if (!user) {
-    throw new Error("User Does Not Exist!");
+    throw AppError.notFound(
+      "No account found for this email address.",
+      ErrorCode.NOT_FOUND,
+    );
   }
 
   if (user.status === "BLOCKED") {
-    throw new Error("User is Blocked");
+    throw AppError.forbidden(
+      "Your account has been blocked. Password reset is not available.",
+      ErrorCode.AUTH_ACCOUNT_BLOCKED,
+    );
   }
 
   if (!user.emailVerified) {
-    throw new Error("User Not Verified");
+    throw AppError.badRequest(
+      "Email is not verified. Complete registration before resetting password.",
+      ErrorCode.BAD_REQUEST,
+    );
   }
 
   if (user.status === "INACTIVE") {
-    throw new Error("User is Inactive");
+    throw AppError.forbidden(
+      "Your account is inactive. Please contact support.",
+      ErrorCode.AUTH_ACCOUNT_INACTIVE,
+    );
   }
 
   if (user.credential === "GOOGLE") {
-    throw new Error("User Has Account With Google");
+    throw AppError.badRequest(
+      "This account uses Google sign-in. Reset the password through Google instead.",
+      ErrorCode.BAD_REQUEST,
+    );
   }
 
   const otp = crypto.randomInt(100000, 1000000).toString();
@@ -72,23 +89,38 @@ const resetPassword = async (payload: {
   const user = await db.orm.public.User.where({ email }).first();
 
   if (!user) {
-    throw new Error("User Does Not Exist!");
+    throw AppError.notFound(
+      "No account found for this email address.",
+      ErrorCode.NOT_FOUND,
+    );
   }
 
   if (user.status === "BLOCKED") {
-    throw new Error("User is Blocked");
+    throw AppError.forbidden(
+      "Your account has been blocked. Password reset is not available.",
+      ErrorCode.AUTH_ACCOUNT_BLOCKED,
+    );
   }
 
   if (!user.emailVerified) {
-    throw new Error("User Not Verified");
+    throw AppError.badRequest(
+      "Email is not verified. Complete registration before resetting password.",
+      ErrorCode.BAD_REQUEST,
+    );
   }
 
   if (user.status === "INACTIVE") {
-    throw new Error("User is Inactive");
+    throw AppError.forbidden(
+      "Your account is inactive. Please contact support.",
+      ErrorCode.AUTH_ACCOUNT_INACTIVE,
+    );
   }
 
   if (user.credential === "GOOGLE") {
-    throw new Error("User Has Account With Google");
+    throw AppError.badRequest(
+      "This account uses Google sign-in. Reset the password through Google instead.",
+      ErrorCode.BAD_REQUEST,
+    );
   }
 
   const key = `forgor-password-otp:${user.email}`;
@@ -96,11 +128,17 @@ const resetPassword = async (payload: {
   const redisOtp = await client.get(key);
 
   if (!redisOtp) {
-    throw new Error("Invalid OTP");
+    throw AppError.badRequest(
+      "Password reset OTP expired. Request a new code via forgot-password.",
+      ErrorCode.AUTH_OTP_EXPIRED,
+    );
   }
 
   if (redisOtp !== otp) {
-    throw new Error("OTP Does Not Match");
+    throw AppError.badRequest(
+      "The OTP you entered does not match.",
+      ErrorCode.AUTH_OTP_INVALID,
+    );
   }
 
   const hashedNewPassword = await bcrypt.hash(

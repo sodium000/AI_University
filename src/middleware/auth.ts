@@ -3,6 +3,9 @@ import { jwtUtils } from "../utils/createJwtToken";
 import config from "../config";
 import { db } from "../prisma/db";
 import { JwtPayload } from "jsonwebtoken";
+import { AppError } from "../errors/AppError";
+import { ErrorCode } from "../errors/errorCodes";
+import { sendFailure } from "../utils/apiResponse";
 
 export interface AuthRequest extends Request {
   user?: any;
@@ -22,12 +25,17 @@ export const auth = (...requiredRoles: string[]) => {
       const token = bearerToken || req.cookies?.accessToken;
 
       if (!token) {
-        return res.status(401).json({
-          success: false,
-          statusCode: 401,
-          message: "You are not authorized! No token provided.",
-          data: null,
-        });
+        return sendFailure(
+          res,
+          AppError.unauthorized(
+            "Authentication required: no access token was provided.",
+            ErrorCode.AUTH_TOKEN_MISSING,
+            {
+              hint: 'Send Authorization: Bearer <accessToken> or include the accessToken cookie.',
+            },
+          ),
+          "Unauthorized",
+        );
       }
 
       const verifiedToken = jwtUtils.verifyToken(
@@ -36,12 +44,15 @@ export const auth = (...requiredRoles: string[]) => {
       );
 
       if (!verifiedToken.success) {
-        return res.status(401).json({
-          success: false,
-          statusCode: 401,
-          message: "Unauthorized! Token is invalid or expired.",
-          data: null,
-        });
+        return sendFailure(
+          res,
+          AppError.unauthorized(
+            "Access token is invalid or expired.",
+            ErrorCode.AUTH_TOKEN_INVALID,
+            { hint: "Refresh the token or log in again." },
+          ),
+          "Unauthorized",
+        );
       }
 
       const decoded = verifiedToken.data as JwtPayload;
@@ -49,56 +60,68 @@ export const auth = (...requiredRoles: string[]) => {
       const user = await db.orm.public.User.where({ id: decoded.id }).first();
 
       if (!user) {
-        return res.status(404).json({
-          success: false,
-          statusCode: 404,
-          message: "User account not found!",
-          data: null,
-        });
+        return sendFailure(
+          res,
+          AppError.notFound(
+            "The user for this token no longer exists.",
+            ErrorCode.NOT_FOUND,
+          ),
+          "User not found",
+        );
       }
 
       if (user.status === "BLOCKED") {
-        return res.status(403).json({
-          success: false,
-          statusCode: 403,
-          message: "Your account has been blocked. Please contact support.",
-          data: null,
-        });
+        return sendFailure(
+          res,
+          AppError.forbidden(
+            "Your account has been blocked. Please contact support.",
+            ErrorCode.AUTH_ACCOUNT_BLOCKED,
+          ),
+          "Account blocked",
+        );
       }
 
       if (user.status === "SUSPENDED") {
-        return res.status(403).json({
-          success: false,
-          statusCode: 403,
-          message: "Your account is suspended. Please contact support.",
-          data: null,
-        });
+        return sendFailure(
+          res,
+          AppError.forbidden(
+            "Your account is suspended. Please contact support.",
+            ErrorCode.AUTH_ACCOUNT_SUSPENDED,
+          ),
+          "Account suspended",
+        );
       }
 
       if (user.status === "INACTIVE") {
-        return res.status(403).json({
-          success: false,
-          statusCode: 403,
-          message: "Your account is inactive. Please contact support.",
-          data: null,
-        });
+        return sendFailure(
+          res,
+          AppError.forbidden(
+            "Your account is inactive. Please contact support.",
+            ErrorCode.AUTH_ACCOUNT_INACTIVE,
+          ),
+          "Account inactive",
+        );
       }
 
       if (
         requiredRoles.length > 0 &&
         !requiredRoles.includes(user.role as string)
       ) {
-        return res.status(403).json({
-          success: false,
-          statusCode: 403,
-          message: "Forbidden! You do not have permission to access this resource.",
-          data: null,
-        });
+        return sendFailure(
+          res,
+          AppError.forbidden(
+            `This route requires one of these roles: ${requiredRoles.join(", ")}. Your role is ${user.role}.`,
+            ErrorCode.FORBIDDEN,
+            {
+              hint: "Use an account with the correct role or adjust route guards in the route file.",
+            },
+          ),
+          "Forbidden",
+        );
       }
 
       (req as AuthRequest).user = user;
 
-      // If user is a student, attach student profile
       if (user.role === "STUDENT") {
         const student = await db.orm.public.Student.where({
           userId: user.id,
@@ -106,7 +129,6 @@ export const auth = (...requiredRoles: string[]) => {
         (req as AuthRequest).student = student;
       }
 
-      // If user is a faculty, attach faculty profile
       if (user.role === "FACULTY") {
         const faculty = await db.orm.public.Faculty.where({
           userId: user.id,
@@ -115,13 +137,12 @@ export const auth = (...requiredRoles: string[]) => {
       }
 
       next();
-    } catch (error: any) {
-      return res.status(500).json({
-        success: false,
-        statusCode: 500,
-        message: error.message || "Internal Server Error during authorization",
-        data: null,
-      });
+    } catch (error: unknown) {
+      return sendFailure(
+        res,
+        error,
+        "Authentication middleware failed unexpectedly.",
+      );
     }
   };
 };

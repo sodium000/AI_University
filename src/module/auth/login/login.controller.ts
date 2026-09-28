@@ -1,147 +1,101 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
+import { AppError } from "../../../errors/AppError";
+import { ErrorCode } from "../../../errors/errorCodes";
+import { asyncHandler } from "../../../utils/asyncHandler";
+import { sendSuccess } from "../../../utils/apiResponse";
 import { authService } from "./login.service";
 import { authReset } from "./passwordReSet.service";
 
-const loginUser = async (req: Request, res: Response) => {
-  const payload = req.body;
+const setAuthCookies = (
+  res: Response,
+  accessToken: string,
+  refreshToken: string,
+  secureCookies = false,
+) => {
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: secureCookies,
+    sameSite: "none",
+    maxAge: 1000 * 60 * 60 * 24,
+  });
 
-  try {
-    const { accessToken, refreshToken } = await authService.loginUser(payload);
-
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24, // 24 hour or 1 day
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 day
-    });
-
-    res.send({
-      success: true,
-      statusCode: 200,
-      message: "User logged in successfully",
-      data: { accessToken, refreshToken },
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-const refreshToken = async (req: Request, res: Response) => {
-  try {
-    const oldRefreshToken = req.cookies.refreshToken;
-
-    if (!oldRefreshToken) {
-      return res.status(401).json({
-        message: "Aunthorized user",
-      });
-    }
-
-    const { accessToken, newRefreshToken } =
-      await authService.refreshToken(oldRefreshToken);
-
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-    });
-
-    res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-    });
-
-    return res.status(200).send({
-      success: true,
-      statusCode: 200,
-      message: "Token Refreshed Successfully",
-      data: { accessToken, refreshToken: newRefreshToken },
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-const logoutUser = async (req: Request, res: Response) => {
-  try {
-    res.clearCookie("accessToken", {
-      httpOnly: true,
-      secure: false,
-      sameSite: "none",
-    });
-
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: false,
-      sameSite: "none",
-    });
-
-    res.status(200).send({
-      success: true,
-      statusCode: 200,
-      message: "User logged out successfully",
-      data: null,
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-const forgotPassword = async (req: Request, res: Response) => {
-  const payload = req.body;
-
-  await authReset.forgotPassword(payload);
-
-  res.status(200).json({
-    success: true,
-    message: `OTP Sent To Email : ${payload.email}`,
-    data: null,
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: secureCookies,
+    sameSite: "none",
+    maxAge: 1000 * 60 * 60 * 24 * 7,
   });
 };
 
-const resetPassword = async (req: Request, res: Response) => {
-  const payload = req.body;
-
-  await authReset.resetPassword(payload);
-
-  res.status(200).json({
-    success: true,
-    message: "Password Changed Successfully",
-    data: null,
+const loginUser = asyncHandler(async (req: Request, res: Response) => {
+  const { accessToken, refreshToken } = await authService.loginUser(req.body);
+  setAuthCookies(res, accessToken, refreshToken);
+  sendSuccess(res, 200, "User logged in successfully", {
+    accessToken,
+    refreshToken,
   });
-};
+});
 
-const myInfo = async (req: Request, res: Response) => {
-  const userId = req.params.id;
-  try {
-    const user = await authService.myInfo(userId as string);
+const refreshToken = asyncHandler(async (req: Request, res: Response) => {
+  const oldRefreshToken = req.cookies.refreshToken;
 
-    res.status(200).json({
-      success: true,
-      message: "User info fetched successfully",
-      data: user,
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      message: error.message,
-    });
+  if (!oldRefreshToken) {
+    throw AppError.unauthorized(
+      "Refresh token is missing from cookies.",
+      ErrorCode.AUTH_TOKEN_MISSING,
+      {
+        hint: "Login again or send the refreshToken cookie set during login.",
+      },
+    );
   }
-};
+
+  const { accessToken, newRefreshToken } =
+    await authService.refreshToken(oldRefreshToken);
+
+  const secureCookies = process.env.NODE_ENV === "production";
+  setAuthCookies(res, accessToken, newRefreshToken, secureCookies);
+
+  sendSuccess(res, 200, "Access token refreshed successfully", {
+    accessToken,
+    refreshToken: newRefreshToken,
+  });
+});
+
+const logoutUser = asyncHandler(async (_req: Request, res: Response) => {
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+  });
+
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+  });
+
+  sendSuccess(res, 200, "User logged out successfully", null);
+});
+
+const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  await authReset.forgotPassword(req.body);
+  sendSuccess(
+    res,
+    200,
+    `Password reset OTP sent to ${req.body.email}`,
+    null,
+  );
+});
+
+const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  await authReset.resetPassword(req.body);
+  sendSuccess(res, 200, "Password changed successfully", null);
+});
+
+const myInfo = asyncHandler(async (req: Request, res: Response) => {
+  const user = await authService.myInfo(req.params.id as string);
+  sendSuccess(res, 200, "User info fetched successfully", user);
+});
 
 export const authController = {
   loginUser,

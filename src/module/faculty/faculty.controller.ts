@@ -1,417 +1,167 @@
 import { Response } from "express";
+import { AppError } from "../../errors/AppError";
+import { ErrorCode } from "../../errors/errorCodes";
 import { AuthRequest } from "../../middleware/auth";
+import { asyncHandler } from "../../utils/asyncHandler";
+import { sendSuccess } from "../../utils/apiResponse";
 import { facultyService } from "./faculty.service";
 
-const resolveStatusCode = (error: any, defaultCode: number = 500) => {
-  const msg = error?.message || "";
-  if (msg.includes("Forbidden")) return 403;
-  if (msg.includes("not found") || msg.includes("Not found")) return 404;
-  if (
-    msg.includes("required") ||
-    msg.includes("already been posted") ||
-    msg.includes("Invalid") ||
-    msg.includes("Cannot record attendance") ||
-    msg.includes("Please provide")
-  ) {
-    return 400;
-  }
-  return defaultCode;
-};
-
-const getProfile = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    const profile = await facultyService.getProfile(userId);
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Faculty profile fetched successfully",
-      data: profile,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to fetch faculty profile",
-      data: null,
-    });
-  }
-};
-
-const createProfile = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        statusCode: 401,
-        message: "Unauthorized! User context not found.",
-        data: null,
-      });
-    }
-
-    const payload = req.body;
-    const result = await facultyService.createProfile(userId, payload);
-
-    res.cookie("accessToken", result.accessToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24,
-    });
-
-    res.cookie("refreshToken", result.refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    });
-
-    return res.status(201).json({
-      success: true,
-      statusCode: 201,
-      message:
-        "Faculty profile created successfully and user role upgraded to FACULTY",
-      data: result,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to create faculty profile",
-      data: null,
-    });
-  }
-};
-
-const updateProfile = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    const facultyId = req.faculty?.id;
-    const payload = req.body;
-
-    const updated = await facultyService.updateProfile(
-      userId,
-      facultyId,
-      payload,
+const requireUserId = (req: AuthRequest) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw AppError.unauthorized(
+      "Unauthorized: authenticated user context is missing.",
+      ErrorCode.AUTH_CONTEXT_MISSING,
+      {
+        hint: "Ensure the Authorization header or accessToken cookie is sent with a valid FACULTY token.",
+      },
     );
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Faculty profile updated successfully",
-      data: updated,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to update faculty profile",
-      data: null,
-    });
   }
+  return userId;
 };
 
-const getMySections = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const { semesterId, courseId } = req.query;
+const getProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const profile = await facultyService.getProfile(req.user?.id);
+  sendSuccess(res, 200, "Faculty profile fetched successfully", profile);
+});
 
-    const sections = await facultyService.getMySections(facultyId, {
-      semesterId: semesterId as string,
-      courseId: courseId as string,
-    });
+const createProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = requireUserId(req);
+  const result = await facultyService.createProfile(userId, req.body);
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Taught sections retrieved successfully",
-      data: sections,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to retrieve sections",
-      data: null,
-    });
-  }
-};
+  res.cookie("accessToken", result.accessToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+    maxAge: 1000 * 60 * 60 * 24,
+  });
 
-const getMyStudents = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const { sectionId, search } = req.query;
+  res.cookie("refreshToken", result.refreshToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  });
 
-    const students = await facultyService.getMyStudents(facultyId, {
-      sectionId: sectionId as string,
-      search: search as string,
-    });
+  sendSuccess(
+    res,
+    201,
+    "Faculty profile created successfully and user role upgraded to FACULTY",
+    result,
+  );
+});
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Students across faculty sections retrieved successfully",
-      data: students,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to retrieve students",
-      data: null,
-    });
-  }
-};
+const updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const updated = await facultyService.updateProfile(
+    req.user?.id,
+    req.faculty?.id,
+    req.body,
+  );
+  sendSuccess(res, 200, "Faculty profile updated successfully", updated);
+});
 
-const getSectionDetail = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const id = req.params.id as string;
+const getMySections = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const sections = await facultyService.getMySections(req.faculty?.id, {
+    semesterId: req.query.semesterId as string,
+    courseId: req.query.courseId as string,
+  });
+  sendSuccess(res, 200, "Taught sections retrieved successfully", sections);
+});
 
-    const section = await facultyService.getSectionDetail(facultyId, id);
+const getMyStudents = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const students = await facultyService.getMyStudents(req.faculty?.id, {
+    sectionId: req.query.sectionId as string,
+    search: req.query.search as string,
+  });
+  sendSuccess(
+    res,
+    200,
+    "Students across faculty sections retrieved successfully",
+    students,
+  );
+});
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Section details retrieved successfully",
-      data: section,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to retrieve section details",
-      data: null,
-    });
-  }
-};
+const getSectionDetail = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const section = await facultyService.getSectionDetail(
+    req.faculty?.id,
+    req.params.id as string,
+  );
+  sendSuccess(res, 200, "Section details retrieved successfully", section);
+});
 
-const recordAttendance = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const id = req.params.id as string;
-    const body = req.body;
+const recordAttendance = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const body = req.body;
+  const records =
+    body.records || body.attendances || (Array.isArray(body) ? body : []);
 
-    const records =
-      body.records || body.attendances || (Array.isArray(body) ? body : []);
-    const date = body.date;
+  const result = await facultyService.recordAttendance(
+    req.faculty?.id,
+    req.params.id as string,
+    { date: body.date, records },
+  );
+  sendSuccess(res, 201, "Attendance recorded successfully", result);
+});
 
-    const result = await facultyService.recordAttendance(facultyId, id, {
-      date,
-      records,
-    });
+const correctAttendance = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const updated = await facultyService.correctAttendance(
+    req.faculty?.id,
+    req.params.id as string,
+    req.body,
+  );
+  sendSuccess(res, 200, "Attendance record corrected successfully", updated);
+});
 
-    return res.status(201).json({
-      success: true,
-      statusCode: 201,
-      message: "Attendance recorded successfully",
-      data: result,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to record attendance",
-      data: null,
-    });
-  }
-};
+const createAssignment = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const assignment = await facultyService.createAssignment(
+    req.faculty?.id,
+    req.body,
+  );
+  sendSuccess(res, 201, "Assignment created successfully", assignment);
+});
 
-const correctAttendance = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const id = req.params.id as string;
-    const payload = req.body;
+const updateAssignment = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const updated = await facultyService.updateAssignment(
+    req.faculty?.id,
+    req.params.id as string,
+    req.body,
+  );
+  sendSuccess(res, 200, "Assignment updated successfully", updated);
+});
 
-    const updated = await facultyService.correctAttendance(
-      facultyId,
-      id,
-      payload,
-    );
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Attendance record corrected successfully",
-      data: updated,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to correct attendance",
-      data: null,
-    });
-  }
-};
-
-const createAssignment = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const payload = req.body;
-
-    const assignment = await facultyService.createAssignment(
-      facultyId,
-      payload,
-    );
-
-    return res.status(201).json({
-      success: true,
-      statusCode: 201,
-      message: "Assignment created successfully",
-      data: assignment,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to create assignment",
-      data: null,
-    });
-  }
-};
-
-const updateAssignment = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const id = req.params.id as string;
-    const payload = req.body;
-
-    const updated = await facultyService.updateAssignment(
-      facultyId,
-      id,
-      payload,
-    );
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Assignment updated successfully",
-      data: updated,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to update assignment",
-      data: null,
-    });
-  }
-};
-
-const getAssignmentSubmissions = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const id = req.params.id as string;
-    const { status } = req.query;
-
+const getAssignmentSubmissions = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
     const result = await facultyService.getAssignmentSubmissions(
-      facultyId,
-      id,
-      status as string,
+      req.faculty?.id,
+      req.params.id as string,
+      req.query.status as string,
     );
+    sendSuccess(
+      res,
+      200,
+      "Assignment submissions retrieved successfully",
+      result,
+    );
+  },
+);
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Assignment submissions retrieved successfully",
-      data: result,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to retrieve assignment submissions",
-      data: null,
-    });
-  }
-};
+const postResult = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const result = await facultyService.postResult(req.faculty?.id, req.body);
+  sendSuccess(res, 201, "Result posted successfully", result);
+});
 
-const postResult = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const payload = req.body;
+const correctResult = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const updated = await facultyService.correctResult(
+    req.faculty?.id,
+    req.params.id as string,
+    req.body,
+  );
+  sendSuccess(res, 200, "Result corrected successfully", updated);
+});
 
-    const result = await facultyService.postResult(facultyId, payload);
-
-    return res.status(201).json({
-      success: true,
-      statusCode: 201,
-      message: "Result posted successfully",
-      data: result,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to post result",
-      data: null,
-    });
-  }
-};
-
-const correctResult = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const id = req.params.id as string;
-    const payload = req.body;
-
-    const updated = await facultyService.correctResult(facultyId, id, payload);
-
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: "Result corrected successfully",
-      data: updated,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to correct result",
-      data: null,
-    });
-  }
-};
-
-const createExam = async (req: AuthRequest, res: Response) => {
-  try {
-    const facultyId = req.faculty?.id;
-    const payload = req.body;
-
-    const exam = await facultyService.createExam(facultyId, payload);
-
-    return res.status(201).json({
-      success: true,
-      statusCode: 201,
-      message: "Exam scheduled successfully",
-      data: exam,
-    });
-  } catch (error: any) {
-    const statusCode = resolveStatusCode(error);
-    return res.status(statusCode).json({
-      success: false,
-      statusCode,
-      message: error.message || "Failed to schedule exam",
-      data: null,
-    });
-  }
-};
+const createExam = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const exam = await facultyService.createExam(req.faculty?.id, req.body);
+  sendSuccess(res, 201, "Exam scheduled successfully", exam);
+});
 
 export const facultyController = {
   getProfile,

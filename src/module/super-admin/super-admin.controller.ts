@@ -1,6 +1,8 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth";
 import { superAdminService } from "./super-admin.service";
+import { sendFailure } from "../../utils/apiResponse";
+import { AppError } from "../../errors/AppError";
 
 // 1. GET /super-admin/dashboard
 export const getDashboard = async (req: AuthRequest, res: Response) => {
@@ -12,13 +14,8 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
       message: "Super admin system dashboard overview retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve dashboard overview",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve dashboard overview");
   }
 };
 
@@ -32,13 +29,8 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       message: "System users list retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve users list",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve users list");
   }
 };
 
@@ -49,12 +41,17 @@ export const updateUserStatus = async (req: AuthRequest, res: Response) => {
     const { status, reason } = req.body;
 
     if (!status) {
-      return res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "Field 'status' is required (ACTIVE, INACTIVE, SUSPENDED, BLOCKED)",
-        data: null,
-      });
+      return sendFailure(
+        res,
+        AppError.badRequest(
+          "Field 'status' is required (ACTIVE, INACTIVE, SUSPENDED, BLOCKED).",
+          undefined,
+          {
+            hint: "Send JSON body: { \"status\": \"ACTIVE\", \"reason\": \"optional note\" }.",
+          },
+        ),
+        "Missing status field",
+      );
     }
 
     const data = await superAdminService.updateUserStatus(
@@ -72,13 +69,8 @@ export const updateUserStatus = async (req: AuthRequest, res: Response) => {
       message: `User status successfully updated to ${status}`,
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to update user status",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to update user status");
   }
 };
 
@@ -98,13 +90,8 @@ export const createAdmin = async (req: AuthRequest, res: Response) => {
       message: "Administrator account created successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create administrator account",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create administrator account");
   }
 };
 
@@ -118,13 +105,8 @@ export const getAllRoles = async (req: AuthRequest, res: Response) => {
       message: "Roles and assigned permissions retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve roles",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve roles");
   }
 };
 
@@ -144,13 +126,8 @@ export const createRole = async (req: AuthRequest, res: Response) => {
       message: "Custom role created successfully with assigned permission set",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to create custom role",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to create custom role");
   }
 };
 
@@ -164,13 +141,8 @@ export const getAllPermissions = async (req: AuthRequest, res: Response) => {
       message: "System recognized permissions catalog retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve permissions",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve permissions");
   }
 };
 
@@ -184,13 +156,8 @@ export const getAuditLogs = async (req: AuthRequest, res: Response) => {
       message: "Global system audit logs retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve audit trail",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve audit trail");
   }
 };
 
@@ -204,13 +171,8 @@ export const getSystemHealth = async (req: AuthRequest, res: Response) => {
       message: "Live system health status retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve system health status",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve system health status");
   }
 };
 
@@ -224,13 +186,8 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
       message: "Global system settings retrieved successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to retrieve system settings",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve system settings");
   }
 };
 
@@ -250,13 +207,8 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
       message: "Global system settings updated successfully",
       data,
     });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message || "Failed to update system settings",
-      data: null,
-    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to update system settings");
   }
 };
 

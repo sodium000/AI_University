@@ -9,6 +9,9 @@ import { adminRoutes } from "./module/admin/admin.route";
 import { superAdminRoutes } from "./module/super-admin/super-admin.route";
 import { stripe } from "./config/stripe";
 import { studentService } from "./module/student/student.service";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { sendFailure, sendSuccess } from "./utils/apiResponse";
+import { AppError } from "./errors/AppError";
 
 const app: Express = express();
 
@@ -64,31 +67,27 @@ app.post(
 app.get("/payment/success", async (req: Request, res: Response) => {
   const sessionId = req.query?.session_id as string;
   if (!sessionId) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: "Missing session_id query parameter.",
-      data: null,
-    });
+    return sendFailure(
+      res,
+      AppError.badRequest("Missing session_id query parameter.", undefined, {
+        hint: "Stripe redirects here with ?session_id=cs_test_... after checkout.",
+      }),
+      "Missing session_id query parameter.",
+    );
   }
   try {
     const result = await studentService.verifyAndFulfillPayment(sessionId);
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: result.message || "Payment verified and recorded successfully.",
-      data: {
+    return sendSuccess(
+      res,
+      200,
+      result.message || "Payment verified and recorded successfully.",
+      {
         payment: result.payment,
         invoiceStatus: result.invoiceStatus,
       },
-    });
-  } catch (err: any) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: err.message || "Failed to verify payment.",
-      data: null,
-    });
+    );
+  } catch (err: unknown) {
+    return sendFailure(res, err, "Failed to verify payment.");
   }
 });
 
@@ -121,5 +120,8 @@ app.use("/admin", adminRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/super-admin", superAdminRoutes);
 app.use("/api/v1/super-admin", superAdminRoutes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

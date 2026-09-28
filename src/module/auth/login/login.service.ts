@@ -3,6 +3,8 @@ import { jwtUtils } from "../../../utils/createJwtToken";
 import config from "../../../config";
 import { JwtPayload, SignOptions } from "jsonwebtoken";
 import { db } from "../../../prisma/db";
+import { AppError } from "../../../errors/AppError";
+import { ErrorCode } from "../../../errors/errorCodes";
 
 interface LoginUser {
   email: string;
@@ -14,20 +16,46 @@ const loginUser = async (playlode: LoginUser) => {
 
   const user = await db.orm.public.User.where({ email }).first();
 
-  if (user?.status === "BLOCKED") {
-    throw new Error("Your account has been blocked. Please contact support.");
-  }
-  if (user?.status === "SUSPENDED") {
-    throw new Error("Your account has been suspended. Please contact support.");
-  }
-  if (user?.status === "INACTIVE") {
-    throw new Error("Your account is inactive. Please contact support.");
+  if (!user) {
+    throw AppError.unauthorized(
+      "Invalid email or password.",
+      ErrorCode.AUTH_INVALID_CREDENTIALS,
+    );
   }
 
-  const isPasswordMatched = await bcrypt.compare(password, user?.password!);
+  if (user.status === "BLOCKED") {
+    throw AppError.forbidden(
+      "Your account has been blocked. Please contact support.",
+      ErrorCode.AUTH_ACCOUNT_BLOCKED,
+    );
+  }
+  if (user.status === "SUSPENDED") {
+    throw AppError.forbidden(
+      "Your account has been suspended. Please contact support.",
+      ErrorCode.AUTH_ACCOUNT_SUSPENDED,
+    );
+  }
+  if (user.status === "INACTIVE") {
+    throw AppError.forbidden(
+      "Your account is inactive. Please contact support.",
+      ErrorCode.AUTH_ACCOUNT_INACTIVE,
+    );
+  }
+
+  if (!user.password) {
+    throw AppError.badRequest(
+      "This account has no password set. Use your OAuth provider or reset your password.",
+      ErrorCode.BAD_REQUEST,
+    );
+  }
+
+  const isPasswordMatched = await bcrypt.compare(password, user.password);
 
   if (!isPasswordMatched) {
-    throw new Error("Password is incorrect");
+    throw AppError.unauthorized(
+      "Invalid email or password.",
+      ErrorCode.AUTH_INVALID_CREDENTIALS,
+    );
   }
 
   const jwtPayload = {
@@ -63,12 +91,23 @@ const refreshToken = async (refreshToken: string) => {
   );
 
   if (!verifiedRefreshToken.success) {
-    throw new Error(verifiedRefreshToken.error);
+    throw AppError.unauthorized(
+      "Refresh token is invalid or expired.",
+      ErrorCode.AUTH_TOKEN_INVALID,
+      { hint: "Login again with POST /api/v1/login." },
+    );
   }
 
   const { id } = verifiedRefreshToken.data as JwtPayload;
 
   const user = await db.orm.public.User.where({ id }).first();
+
+  if (!user) {
+    throw AppError.notFound(
+      "User linked to this refresh token no longer exists.",
+      ErrorCode.NOT_FOUND,
+    );
+  }
 
   const jwtPayload = {
     id: user?.id,

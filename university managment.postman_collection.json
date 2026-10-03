@@ -1,0 +1,853 @@
+{
+  "info": {
+    "_postman_id": "96b37842-1dd1-43a6-9525-c3ece5e8a18e",
+    "name": "university managment",
+    "description": "# 🚀 Get started here\n\nThis template guides you through CRUD operations (GET, POST, PUT, DELETE), variables, and tests.\n\n## 🔖 **How to use this template**\n\n#### **Step 1: Send requests**\n\nRESTful APIs allow you to perform CRUD operations using the POST, GET, PUT, and DELETE HTTP methods.\n\nThis collection contains each of these [request](https://learning.postman.com/docs/sending-requests/requests/) types. Open each request and click \"Send\" to see what happens.\n\n#### **Step 2: View responses**\n\nObserve the response tab for status code (200 OK), response time, and size.\n\n#### **Step 3: Send new Body data**\n\nUpdate or add new data in \"Body\" in the POST request. Typically, Body data is also used in PUT request.\n\n```\n{\n    \"name\": \"Add your name in the body\"\n}\n\n ```\n\n#### **Step 4: Update the variable**\n\nVariables enable you to store and reuse values in Postman. We have created a [variable](https://learning.postman.com/docs/sending-requests/variables/) called `base_url` with the sample request [https://postman-api-learner.glitch.me](https://postman-api-learner.glitch.me). Replace it with your API endpoint to customize this collection.\n\n#### **Step 5: Add tests in the \"Scripts\" tab**\n\nAdding tests to your requests can help you confirm that your API is working as expected. You can write test scripts in JavaScript and view the output in the \"Test Results\" tab.\n\n<img src=\"https://content.pstmn.io/fa30ea0a-373d-4545-a668-e7b283cca343/aW1hZ2UucG5n\" alt=\"\" height=\"1530\" width=\"2162\">\n\n## 💪 Pro tips\n\n- Use folders to group related requests and organize the collection.\n    \n- Add more [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) to verify if the API works as expected and execute workflows.\n    \n\n## 💡Related templates\n\n[API testing basics](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9a37a28-055b-49cd-8c7e-97494a21eb54&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[API documentation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9c28f47-1253-44af-a2f3-20dce4da1f18&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[Authorization methods](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=31a9a6ed-4cdf-4ced-984c-d12c9aec1c27&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "42854805"
+  },
+  "item": [
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Verifyed account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {\n    pm.expect(pm.response.code).to.be.oneOf([200, 201]);\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tanmoy Faculty\",\n  \"email\": \"sterlingmarcus871@gmail.com\",\n  \"password\": \"Password123!\",\n  \"role\": \"FACULTY\" // Options: \"STUDENT\" | \"FACULTY\" | \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/auth/verifyUser",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "verifyUser"
+              ]
+            },
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\":\"sterlingmarcus871@gmail.com\",\r\n    \"otp\":\"843725\"\r\n\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/auth/register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Login_User",
+      "item": [
+        {
+          "name": "Reset Password",
+          "item": [
+            {
+              "name": "forgot_Password",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"email\":\"elenarodriguez.tx@gmail.com\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/auth/api/v1/forgot-password",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "auth",
+                    "api",
+                    "v1",
+                    "forgot-password"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Resetpass",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"email\":\"elenarodriguez.tx@gmail.com\",\r\n    \"otp\": \"770732\",\r\n    \"newPassword\": \"1234567\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/auth/api/v1/reset-password",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "auth",
+                    "api",
+                    "v1",
+                    "reset-password"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"elenarodriguez.tx@gmail.com\",\r\n    \"password\": \"Password123!\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/auth/api/v1/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "auth",
+                "api",
+                "v1",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "refresh_token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/auth/api/v1/refresh-token",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "auth",
+                "api",
+                "v1",
+                "refresh-token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/auth/api/v1/logout",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "auth",
+                "api",
+                "v1",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getProfile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/auth/api/v1/me/1f04c287-5a99-427a-bfc1-0d173a41e7e0",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "auth",
+                "api",
+                "v1",
+                "me",
+                "1f04c287-5a99-427a-bfc1-0d173a41e7e0"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "student",
+      "item": [
+        {
+          "name": "Student Profile Update",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"phone\": \"+1234567890\",\r\n  \"photoUrl\": \"https://example.com/photo.jpg\",\r\n  \"gender\": \"MALE\",\r\n  \"address\": \"123 Campus Avenue\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/student/me",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get student profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/v1/student/me",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "enrolled courses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/v1/student/me/courses?status=ENROLLED",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "me",
+                "courses"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ENROLLED"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Student ID",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"departmentId\": \"01743973-f6e1-44d2-802b-748acd7bfdf4\",\r\n  \"programId\": \"3bdaf108-2ec8-4cf3-98f9-da3a4bd13e4d\",\r\n  \"admissionYear\": 2026,\r\n  \"currentYear\": 1,\r\n  \"currentSemester\": 1,\r\n  \"gender\": \"Male\",\r\n  \"dateOfBirth\": \"2003-04-10\",\r\n  \"address\": \"45 University Ave, Dhaka\",\r\n  \"phone\": \"01711000000\",\r\n  \"photoUrl\": \"https://example.com/photo.jpg\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/student/me",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Enroll in a course section",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sectionId\": \"57fcd84f-133d-4409-ad14-548993ddeeb8\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/student/me/enrollments",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "me",
+                "enrollments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "ENROLLED Filter by status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/v1/student/me/courses?status=ENROLLED",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "me",
+                "courses"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ENROLLED"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get all invoices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/v1/student/me/invoices",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "me",
+                "invoices"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create checkout directly from invoice ID",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/v1/student/me/invoices/33735bed-313d-48f2-b351-3ead5667d952/pay",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "student",
+                "me",
+                "invoices",
+                "33735bed-313d-48f2-b351-3ead5667d952",
+                "pay"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Student create",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/v1/admin/students",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "students"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "department create",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"name\": \"Computer Science & Engineering\",\r\n  \"code\": \"CSE\",\r\n  \"facultyName\": \"Faculty of Science & Technology\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/admin/departments",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "departments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Programs create",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"name\": \"B.Sc. in Computer Science\",\r\n  \"code\": \"BSC-CSE\",\r\n  \"departmentId\": \"01743973-f6e1-44d2-802b-748acd7bfdf4\",\r\n  \"durationYears\": 4,\r\n  \"totalCredits\": 140\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/admin/programs",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "programs"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "course create",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"code\": \"CSE301\",\r\n  \"title\": \"Data Structures\",\r\n  \"description\": \"Fundamental data structures and algorithms\",\r\n  \"credit\": 3.0,\r\n  \"departmentId\": \"01743973-f6e1-44d2-802b-748acd7bfdf4\",\r\n  \"programId\": \"3bdaf108-2ec8-4cf3-98f9-da3a4bd13e4d\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/admin/courses",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "courses"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "semesters create",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"name\": \"Fall 2026\",\r\n  \"year\": 2026,\r\n  \"status\": \"UPCOMING\",\r\n  \"startDate\": \"2026-09-01\",\r\n  \"endDate\": \"2026-12-31\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/admin/semesters",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "semesters"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "section Create",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"Section A\",\r\n  \"courseId\": \"12d5ccfc-d6cb-4f7f-bcaf-9d2eb44a4d65\",\r\n  \"semesterId\": \"8a896fbb-bfd6-4fee-b27a-d9ec3983f0ca\",\r\n  \"facultyId\": \"09b18994-2c58-457e-8a62-2d0257db2984\",\r\n  \"capacity\": 40,\r\n  \"schedules\": [\r\n    {\r\n      \"dayOfWeek\": \"sunday\",\r\n      \"startTime\": \"09:00\",\r\n      \"endTime\": \"10:30\",\r\n      \"room\": \"Room 301\",\r\n      \"building\": \"CSE Building\"\r\n    },\r\n    {\r\n      \"dayOfWeek\": \"mounday\",\r\n      \"startTime\": \"09:00\",\r\n      \"endTime\": \"10:30\",\r\n      \"room\": \"Room 301\",\r\n      \"building\": \"CSE Building\"\r\n    }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/admin/sections",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "sections"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Faculty",
+      "item": [
+        {
+          "name": "Create Faculty Id",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"departmentId\": \"01743973-f6e1-44d2-802b-748acd7bfdf4\",\r\n  \"designation\": \"Assistant Professor\",\r\n  \"specialization\": \"Artificial Intelligence & Data Science\",\r\n  \"joiningDate\": \"2026-01-15\",\r\n  \"phone\": \"01811000000\",\r\n  \"photoUrl\": \"https://example.com/faculty.jpg\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/faculty/me",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "faculty",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create assignment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sectionId\": \"57fcd84f-133d-4409-ad14-548993ddeeb8\",\r\n  \"title\": \"Lab Report 1\",\r\n  \"description\": \"Write a report on data structures\",\r\n  \"deadline\": \"2026-10-15T23:59:00.000Z\",\r\n  \"totalMarks\": 100\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/faculty/assignments",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "faculty",
+                "assignments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update assignment",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"title\": \"Updated Lab Report\",\r\n  \"deadline\": \"2026-10-20T23:59:00.000Z\",\r\n  \"totalMarks\": 80\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/faculty/assignments/f20191f1-c686-4529-bf25-3d46cb9fe975",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "faculty",
+                "assignments",
+                "f20191f1-c686-4529-bf25-3d46cb9fe975"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create exam",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sectionId\": \"57fcd84f-133d-4409-ad14-548993ddeeb8\",\r\n  \"title\": \"Midterm Exam 2026\",\r\n  \"type\": \"MIDTERM\",\r\n  \"examDate\": \"2026-10-20T10:00:00.000Z\",\r\n  \"totalMarks\": 50\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/faculty/exams",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "faculty",
+                "exams"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Faculty infomation",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"phone\": \"01900000000\",\r\n  \"photoUrl\": \"https://example.com/photo.jpg\",\r\n  \"designation\": \"Associate Professor\",\r\n  \"specialization\": \"Machine Learning\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/v1/faculty/me",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "v1",
+                "faculty",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "apikey"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}

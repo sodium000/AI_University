@@ -35,28 +35,29 @@ A full-featured **University Management System** REST API built with **Express.j
 - JWT authentication with role-based access control
 - Email notifications via Nodemailer
 
-**Base URL:** `http://localhost:5000`
+**Local Base URL:** `http://localhost:5000`
+**Deploy URL:** `https://ai-agentic-university.vercel.app/`
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Runtime** | Node.js + TypeScript |
-| **Framework** | Express.js v5 |
-| **ORM** | Prisma 8 (`@prisma/orm-postgres`) |
-| **Database** | PostgreSQL (via Prisma Platform) |
-| **Cache / OTP Store** | Redis |
-| **Auth** | JWT (Access + Refresh tokens) |
-| **Password Hashing** | bcryptjs |
-| **Email** | Nodemailer (Gmail SMTP) |
-| **Payments** | Stripe (Checkout Sessions + Webhooks) |
-| **Validation** | Zod |
-| **Templating** | EJS (email templates) |
-| **Build Tool** | tsup |
-| **Dev Runner** | tsx (watch mode) |
-| **Deployment** | Vercel |
+| Layer                 | Technology                            |
+| --------------------- | ------------------------------------- |
+| **Runtime**           | Node.js + TypeScript                  |
+| **Framework**         | Express.js v5                         |
+| **ORM**               | Prisma 8 (`@prisma/orm-postgres`)     |
+| **Database**          | PostgreSQL (via Prisma Platform)      |
+| **Cache / OTP Store** | Redis                                 |
+| **Auth**              | JWT (Access + Refresh tokens)         |
+| **Password Hashing**  | bcryptjs                              |
+| **Email**             | Nodemailer (Gmail SMTP)               |
+| **Payments**          | Stripe (Checkout Sessions + Webhooks) |
+| **Validation**        | Zod                                   |
+| **Templating**        | EJS (email templates)                 |
+| **Build Tool**        | tsup                                  |
+| **Dev Runner**        | tsx (watch mode)                      |
+| **Deployment**        | Vercel                                |
 
 ---
 
@@ -87,29 +88,29 @@ Client Request
 
 The database is modelled with **Prisma 8** and uses a PostgreSQL backend.
 
-| Model | Description |
-|-------|-------------|
-| `User` | Base user account (STUDENT / FACULTY / ADMIN / SUPER_ADMIN) |
-| `Student` | Student profile linked to a User |
-| `Faculty` | Faculty profile linked to a User |
-| `Department` | Academic department |
-| `Program` | Degree program within a department |
-| `Course` | Individual course (code, credits, etc.) |
-| `Semester` | Academic semester (UPCOMING / ACTIVE / COMPLETED) |
-| `Section` | Course section offered in a semester by a faculty member |
-| `ClassSchedule` | Weekly schedule for a section (day, time, room) |
-| `Enrollment` | Student <-> Section enrollment record |
-| `Attendance` | Per-student per-day attendance records |
-| `Assignment` | Assignment created by faculty for a section |
-| `AssignmentSubmission` | Student file submission for an assignment |
-| `Exam` | Exam (MIDTERM / FINAL / QUIZ / PRACTICAL) |
-| `Result` | Student grade and grade point for an enrollment |
-| `Invoice` | Fee invoice generated for a student |
-| `Payment` | Payment record tied to an invoice |
-| `Notification` | In-app notifications for users |
-| `AuditLog` | Full audit trail of admin/super-admin actions |
-| `Role` | RBAC role with permissions (JSON) |
-| `SystemSetting` | Key-value system configuration |
+| Model                  | Description                                                 |
+| ---------------------- | ----------------------------------------------------------- |
+| `User`                 | Base user account (STUDENT / FACULTY / ADMIN / SUPER_ADMIN) |
+| `Student`              | Student profile linked to a User                            |
+| `Faculty`              | Faculty profile linked to a User                            |
+| `Department`           | Academic department                                         |
+| `Program`              | Degree program within a department                          |
+| `Course`               | Individual course (code, credits, etc.)                     |
+| `Semester`             | Academic semester (UPCOMING / ACTIVE / COMPLETED)           |
+| `Section`              | Course section offered in a semester by a faculty member    |
+| `ClassSchedule`        | Weekly schedule for a section (day, time, room)             |
+| `Enrollment`           | Student <-> Section enrollment record                       |
+| `Attendance`           | Per-student per-day attendance records                      |
+| `Assignment`           | Assignment created by faculty for a section                 |
+| `AssignmentSubmission` | Student file submission for an assignment                   |
+| `Exam`                 | Exam (MIDTERM / FINAL / QUIZ / PRACTICAL)                   |
+| `Result`               | Student grade and grade point for an enrollment             |
+| `Invoice`              | Fee invoice generated for a student                         |
+| `Payment`              | Payment record tied to an invoice                           |
+| `Notification`         | In-app notifications for users                              |
+| `AuditLog`             | Full audit trail of admin/super-admin actions               |
+| `Role`                 | RBAC role with permissions (JSON)                           |
+| `SystemSetting`        | Key-value system configuration                              |
 
 ### Key Enums
 
@@ -127,6 +128,7 @@ SemesterStatus: UPCOMING | ACTIVE | COMPLETED
 ## Features
 
 ### 🔐 Authentication
+
 - OTP-based email verification on registration
 - JWT access + refresh token pair
 - Cookie-based token storage
@@ -134,6 +136,7 @@ SemesterStatus: UPCOMING | ACTIVE | COMPLETED
 - bcrypt password hashing (configurable salt rounds)
 
 ### 🎓 Student Portal
+
 - Create and update student profile (auto-generated student ID e.g. STU20267027)
 - Enroll in / drop course sections
 - View class schedules and attendance records
@@ -142,6 +145,7 @@ SemesterStatus: UPCOMING | ACTIVE | COMPLETED
 - Stripe payment for invoices and payment verification
 
 ### 👨‍🏫 Faculty Portal
+
 - Create and manage faculty profile (auto-generated employee ID e.g. FAC20262596)
 - View assigned sections and enrolled students
 - Record and correct attendance
@@ -149,12 +153,14 @@ SemesterStatus: UPCOMING | ACTIVE | COMPLETED
 - Schedule exams and post academic results
 
 ### 🛡️ Admin Panel
+
 - Dashboard statistics
 - Full CRUD for students, faculty, departments, programs, courses, semesters, sections
 - Manage enrollments (force enroll)
 - View all payments and generate reports
 
 ### 👑 Super Admin
+
 - System health monitoring
 - Full user management (status changes: ACTIVE / BLOCKED / SUSPENDED)
 - Create admin accounts
@@ -162,12 +168,14 @@ SemesterStatus: UPCOMING | ACTIVE | COMPLETED
 - System settings management
 
 ### 💳 Payments (Stripe)
+
 - Create Stripe Checkout Sessions from invoices
 - Webhook handler (/webhook) for automatic payment fulfillment
 - Payment success redirect (/payment/success?session_id=...)
 - Payment cancellation redirect (/payment/cancel)
 
 ### 📧 Notifications
+
 - In-app notification system
 - Email notifications via Nodemailer (EJS templates)
 - Unread filter support
@@ -300,86 +308,87 @@ Full API documentation is available in [`api_reference.md`](./api_reference.md).
 **Base URL:** `http://localhost:5000`
 
 **Auth Header (protected routes):**
+
 ```
 Authorization: Bearer <your_access_token>
 ```
 
 ### Auth Endpoints (Public)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/v1/auth/register | Step 1 — Send OTP to email |
-| POST | /api/v1/auth/verifyUser | Step 2 — Verify OTP and create account |
-| POST | /api/v1/login | Login (returns tokens) |
-| POST | /api/v1/refresh-token | Refresh access token |
-| POST | /api/v1/logout | Logout (clears cookie) |
-| POST | /api/v1/forgot-password | Send reset OTP |
-| POST | /api/v1/reset-password | Reset password with OTP |
-| GET | /api/v1/me/:userId | Get current user info |
+| Method | Endpoint                | Description                            |
+| ------ | ----------------------- | -------------------------------------- |
+| POST   | /api/v1/auth/register   | Step 1 — Send OTP to email             |
+| POST   | /api/v1/auth/verifyUser | Step 2 — Verify OTP and create account |
+| POST   | /api/v1/login           | Login (returns tokens)                 |
+| POST   | /api/v1/refresh-token   | Refresh access token                   |
+| POST   | /api/v1/logout          | Logout (clears cookie)                 |
+| POST   | /api/v1/forgot-password | Send reset OTP                         |
+| POST   | /api/v1/reset-password  | Reset password with OTP                |
+| GET    | /api/v1/me/:userId      | Get current user info                  |
 
 ### Student Endpoints (Role: STUDENT)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET/POST/PATCH | /api/v1/student/me | Profile management |
-| GET/POST/DELETE | /api/v1/student/me/enrollments | Enrollment management |
-| GET | /api/v1/student/me/courses | View enrolled courses |
-| GET | /api/v1/student/me/schedule | Class and exam schedule |
-| GET | /api/v1/student/me/attendance | Attendance records |
-| GET | /api/v1/student/me/results | Academic results |
-| GET | /api/v1/student/me/transcript | Full transcript + CGPA |
-| GET/POST | /api/v1/student/me/assignments | View and submit assignments |
-| GET | /api/v1/student/me/invoices | Fee invoices |
-| POST | /api/v1/student/me/payments/checkout | Create Stripe checkout |
-| POST | /api/v1/student/me/payments/verify | Verify payment |
-| GET | /api/v1/student/me/notifications | Notifications |
+| Method          | Endpoint                             | Description                 |
+| --------------- | ------------------------------------ | --------------------------- |
+| GET/POST/PATCH  | /api/v1/student/me                   | Profile management          |
+| GET/POST/DELETE | /api/v1/student/me/enrollments       | Enrollment management       |
+| GET             | /api/v1/student/me/courses           | View enrolled courses       |
+| GET             | /api/v1/student/me/schedule          | Class and exam schedule     |
+| GET             | /api/v1/student/me/attendance        | Attendance records          |
+| GET             | /api/v1/student/me/results           | Academic results            |
+| GET             | /api/v1/student/me/transcript        | Full transcript + CGPA      |
+| GET/POST        | /api/v1/student/me/assignments       | View and submit assignments |
+| GET             | /api/v1/student/me/invoices          | Fee invoices                |
+| POST            | /api/v1/student/me/payments/checkout | Create Stripe checkout      |
+| POST            | /api/v1/student/me/payments/verify   | Verify payment              |
+| GET             | /api/v1/student/me/notifications     | Notifications               |
 
 ### Faculty Endpoints (Role: FACULTY)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET/POST/PATCH | /api/v1/faculty/me | Profile management |
-| GET | /api/v1/faculty/me/sections | Assigned sections |
-| GET | /api/v1/faculty/me/students | Students I teach |
-| POST | /api/v1/faculty/sections/:sectionId/attendance | Record attendance |
-| PATCH | /api/v1/faculty/attendance/:attendanceId | Correct attendance |
-| POST | /api/v1/faculty/assignments | Create assignment |
-| PATCH | /api/v1/faculty/assignments/:assignmentId | Update assignment |
-| GET | /api/v1/faculty/assignments/:assignmentId/submissions | View submissions |
-| POST | /api/v1/faculty/results | Post result |
-| PATCH | /api/v1/faculty/results/:resultId | Correct result |
-| POST | /api/v1/faculty/exams | Create exam |
+| Method         | Endpoint                                              | Description        |
+| -------------- | ----------------------------------------------------- | ------------------ |
+| GET/POST/PATCH | /api/v1/faculty/me                                    | Profile management |
+| GET            | /api/v1/faculty/me/sections                           | Assigned sections  |
+| GET            | /api/v1/faculty/me/students                           | Students I teach   |
+| POST           | /api/v1/faculty/sections/:sectionId/attendance        | Record attendance  |
+| PATCH          | /api/v1/faculty/attendance/:attendanceId              | Correct attendance |
+| POST           | /api/v1/faculty/assignments                           | Create assignment  |
+| PATCH          | /api/v1/faculty/assignments/:assignmentId             | Update assignment  |
+| GET            | /api/v1/faculty/assignments/:assignmentId/submissions | View submissions   |
+| POST           | /api/v1/faculty/results                               | Post result        |
+| PATCH          | /api/v1/faculty/results/:resultId                     | Correct result     |
+| POST           | /api/v1/faculty/exams                                 | Create exam        |
 
 ### Admin Endpoints (Role: ADMIN)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/v1/admin/dashboard | Dashboard stats |
-| GET/POST | /api/v1/admin/students | List / create students |
-| PATCH/DELETE | /api/v1/admin/students/:id | Update / delete student |
-| GET/POST | /api/v1/admin/faculty | List / create faculty |
-| POST | /api/v1/admin/departments | Create department |
-| PATCH | /api/v1/admin/departments/:id | Update department |
-| POST | /api/v1/admin/programs | Create program |
-| POST | /api/v1/admin/courses | Create course |
-| POST | /api/v1/admin/semesters | Create semester |
-| POST | /api/v1/admin/sections | Create section |
-| GET/POST | /api/v1/admin/enrollments | List / force enroll |
-| GET | /api/v1/admin/payments | All payments |
-| GET | /api/v1/admin/reports | Generate reports |
+| Method       | Endpoint                      | Description             |
+| ------------ | ----------------------------- | ----------------------- |
+| GET          | /api/v1/admin/dashboard       | Dashboard stats         |
+| GET/POST     | /api/v1/admin/students        | List / create students  |
+| PATCH/DELETE | /api/v1/admin/students/:id    | Update / delete student |
+| GET/POST     | /api/v1/admin/faculty         | List / create faculty   |
+| POST         | /api/v1/admin/departments     | Create department       |
+| PATCH        | /api/v1/admin/departments/:id | Update department       |
+| POST         | /api/v1/admin/programs        | Create program          |
+| POST         | /api/v1/admin/courses         | Create course           |
+| POST         | /api/v1/admin/semesters       | Create semester         |
+| POST         | /api/v1/admin/sections        | Create section          |
+| GET/POST     | /api/v1/admin/enrollments     | List / force enroll     |
+| GET          | /api/v1/admin/payments        | All payments            |
+| GET          | /api/v1/admin/reports         | Generate reports        |
 
 ### Super Admin Endpoints (Role: SUPER_ADMIN)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/v1/super-admin/dashboard | System dashboard |
-| GET | /api/v1/super-admin/users | All users |
-| PATCH | /api/v1/super-admin/users/:id/status | Change user status |
-| POST | /api/v1/super-admin/admins | Create admin |
-| GET | /api/v1/super-admin/audit-logs | View audit trail |
-| GET | /api/v1/super-admin/system-health | System health check |
-| GET | /api/v1/super-admin/settings | Get settings |
-| PATCH | /api/v1/super-admin/settings | Update settings |
+| Method | Endpoint                             | Description         |
+| ------ | ------------------------------------ | ------------------- |
+| GET    | /api/v1/super-admin/dashboard        | System dashboard    |
+| GET    | /api/v1/super-admin/users            | All users           |
+| PATCH  | /api/v1/super-admin/users/:id/status | Change user status  |
+| POST   | /api/v1/super-admin/admins           | Create admin        |
+| GET    | /api/v1/super-admin/audit-logs       | View audit trail    |
+| GET    | /api/v1/super-admin/system-health    | System health check |
+| GET    | /api/v1/super-admin/settings         | Get settings        |
+| PATCH  | /api/v1/super-admin/settings         | Update settings     |
 
 ---
 
@@ -398,12 +407,12 @@ Authorization: Bearer <your_access_token>
 
 ## Roles and Permissions
 
-| Role | Access Level |
-|------|-------------|
-| STUDENT | Own profile, enrollments, attendance, results, assignments, payments |
-| FACULTY | Own profile, assigned sections, attendance recording, grading |
-| ADMIN | All students / faculty / academic structure management |
-| SUPER_ADMIN | Everything + user status control, audit logs, system settings |
+| Role        | Access Level                                                         |
+| ----------- | -------------------------------------------------------------------- |
+| STUDENT     | Own profile, enrollments, attendance, results, assignments, payments |
+| FACULTY     | Own profile, assigned sections, attendance recording, grading        |
+| ADMIN       | All students / faculty / academic structure management               |
+| SUPER_ADMIN | Everything + user status control, audit logs, system settings        |
 
 > **Role Upgrade:** A user starts as STUDENT and is automatically upgraded to FACULTY  
 > when they create a faculty profile via `POST /api/v1/faculty/me`.  

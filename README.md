@@ -466,8 +466,3 @@ vercel --prod
 This project is licensed under the **ISC License**.
 
 ---
-
-## Author
-
-Built as part of **Level 2 — Assignment 7 (Backend)**  
-AI Agentic University Management System

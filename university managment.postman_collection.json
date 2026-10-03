@@ -38,16 +38,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/auth/verifyUser",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "verifyUser"
-              ]
+              "path": ["api", "v1", "auth", "verifyUser"]
             },
             "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
           },
@@ -70,16 +63,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/auth/register",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
+              "path": ["api", "v1", "auth", "register"]
             }
           },
           "response": []
@@ -109,16 +95,9 @@
                 "url": {
                   "raw": "http://localhost:5000/auth/api/v1/forgot-password",
                   "protocol": "http",
-                  "host": [
-                    "localhost"
-                  ],
+                  "host": ["localhost"],
                   "port": "5000",
-                  "path": [
-                    "auth",
-                    "api",
-                    "v1",
-                    "forgot-password"
-                  ]
+                  "path": ["auth", "api", "v1", "forgot-password"]
                 }
               },
               "response": []
@@ -140,16 +119,9 @@
                 "url": {
                   "raw": "http://localhost:5000/auth/api/v1/reset-password",
                   "protocol": "http",
-                  "host": [
-                    "localhost"
-                  ],
+                  "host": ["localhost"],
                   "port": "5000",
-                  "path": [
-                    "auth",
-                    "api",
-                    "v1",
-                    "reset-password"
-                  ]
+                  "path": ["auth", "api", "v1", "reset-password"]
                 }
               },
               "response": []
@@ -173,16 +145,9 @@
             "url": {
               "raw": "http://localhost:5000/auth/api/v1/login",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "auth",
-                "api",
-                "v1",
-                "login"
-              ]
+              "path": ["auth", "api", "v1", "login"]
             }
           },
           "response": []
@@ -195,16 +160,9 @@
             "url": {
               "raw": "http://localhost:5000/auth/api/v1/refresh-token",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "auth",
-                "api",
-                "v1",
-                "refresh-token"
-              ]
+              "path": ["auth", "api", "v1", "refresh-token"]
             }
           },
           "response": []
@@ -217,16 +175,9 @@
             "url": {
               "raw": "http://localhost:5000/auth/api/v1/logout",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "auth",
-                "api",
-                "v1",
-                "logout"
-              ]
+              "path": ["auth", "api", "v1", "logout"]
             }
           },
           "response": []
@@ -239,9 +190,7 @@
             "url": {
               "raw": "http://localhost:5000/auth/api/v1/me/1f04c287-5a99-427a-bfc1-0d173a41e7e0",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
               "path": [
                 "auth",
@@ -276,16 +225,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/student/me",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "student",
-                "me"
-              ]
+              "path": ["api", "v1", "student", "me"]
             }
           },
           "response": []
@@ -298,16 +240,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/student/me",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "student",
-                "me"
-              ]
+              "path": ["api", "v1", "student", "me"]
             }
           },
           "response": []
@@ -320,17 +255,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/student/me/courses?status=ENROLLED",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "student",
-                "me",
-                "courses"
-              ],
+              "path": ["api", "v1", "student", "me", "courses"],
               "query": [
                 {
                   "key": "status",
@@ -358,16 +285,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/student/me",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "student",
-                "me"
-              ]
+              "path": ["api", "v1", "student", "me"]
             }
           },
           "response": []
@@ -389,17 +309,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/student/me/enrollments",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "student",
-                "me",
-                "enrollments"
-              ]
+              "path": ["api", "v1", "student", "me", "enrollments"]
             }
           },
           "response": []
@@ -412,17 +324,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/student/me/courses?status=ENROLLED",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "student",
-                "me",
-                "courses"
-              ],
+              "path": ["api", "v1", "student", "me", "courses"],
               "query": [
                 {
                   "key": "status",
@@ -441,17 +345,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/student/me/invoices",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "student",
-                "me",
-                "invoices"
-              ]
+              "path": ["api", "v1", "student", "me", "invoices"]
             }
           },
           "response": []
@@ -464,9 +360,7 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/student/me/invoices/33735bed-313d-48f2-b351-3ead5667d952/pay",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
               "path": [
                 "api",
@@ -494,16 +388,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/admin/students",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "students"
-              ]
+              "path": ["api", "v1", "admin", "students"]
             }
           },
           "response": []
@@ -525,16 +412,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/admin/departments",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "departments"
-              ]
+              "path": ["api", "v1", "admin", "departments"]
             }
           },
           "response": []
@@ -556,16 +436,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/admin/programs",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "programs"
-              ]
+              "path": ["api", "v1", "admin", "programs"]
             }
           },
           "response": []
@@ -587,16 +460,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/admin/courses",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "courses"
-              ]
+              "path": ["api", "v1", "admin", "courses"]
             }
           },
           "response": []
@@ -618,16 +484,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/admin/semesters",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "semesters"
-              ]
+              "path": ["api", "v1", "admin", "semesters"]
             }
           },
           "response": []
@@ -649,16 +508,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/admin/sections",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "admin",
-                "sections"
-              ]
+              "path": ["api", "v1", "admin", "sections"]
             }
           },
           "response": []
@@ -685,16 +537,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/faculty/me",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "faculty",
-                "me"
-              ]
+              "path": ["api", "v1", "faculty", "me"]
             }
           },
           "response": []
@@ -716,16 +561,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/faculty/assignments",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "faculty",
-                "assignments"
-              ]
+              "path": ["api", "v1", "faculty", "assignments"]
             }
           },
           "response": []
@@ -747,9 +585,7 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/faculty/assignments/f20191f1-c686-4529-bf25-3d46cb9fe975",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
               "path": [
                 "api",
@@ -779,16 +615,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/faculty/exams",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "faculty",
-                "exams"
-              ]
+              "path": ["api", "v1", "faculty", "exams"]
             }
           },
           "response": []
@@ -810,16 +639,9 @@
             "url": {
               "raw": "http://localhost:5000/api/v1/faculty/me",
               "protocol": "http",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "5000",
-              "path": [
-                "api",
-                "v1",
-                "faculty",
-                "me"
-              ]
+              "path": ["api", "v1", "faculty", "me"]
             }
           },
           "response": []
@@ -835,18 +657,14 @@
       "listen": "prerequest",
       "script": {
         "type": "text/javascript",
-        "exec": [
-          ""
-        ]
+        "exec": [""]
       }
     },
     {
       "listen": "test",
       "script": {
         "type": "text/javascript",
-        "exec": [
-          ""
-        ]
+        "exec": [""]
       }
     }
   ]

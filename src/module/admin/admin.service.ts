@@ -736,6 +736,15 @@ export const createFaculty = async (
 // ==========================================
 // 4. Academic Structure: Departments
 // ==========================================
+export const getAllDepartments = async () => {
+  return db.orm.public.Department
+    .include("programs", (programs) => programs.count())
+    .include("faculty", (faculty) => faculty.count())
+    .include("students", (students) => students.count())
+    .orderBy((department) => department.name.asc())
+    .all();
+};
+
 export interface CreateDepartmentPayload {
   name: string;
   code: string;
@@ -829,6 +838,15 @@ export const updateDepartment = async (
 // ==========================================
 // 5. Academic Structure: Programs
 // ==========================================
+export const getAllPrograms = async () => {
+  return db.orm.public.Program
+    .include("department", (department) =>
+      department.select("id", "name", "code", "facultyName"),
+    )
+    .orderBy((program) => program.name.asc())
+    .all();
+};
+
 export interface CreateProgramPayload {
   name: string;
   code: string;
@@ -885,6 +903,18 @@ export const createProgram = async (
 // ==========================================
 // 6. Academic Structure: Courses
 // ==========================================
+export const getAllCourses = async () => {
+  return db.orm.public.Course
+    .include("department", (department) =>
+      department.select("id", "name", "code", "facultyName"),
+    )
+    .include("program", (program) =>
+      program.select("id", "name", "code", "durationYears", "totalCredits"),
+    )
+    .orderBy((course) => course.code.asc())
+    .all();
+};
+
 export interface CreateCoursePayload {
   code: string;
   title: string;
@@ -950,6 +980,12 @@ export const createCourse = async (
 // ==========================================
 // 7. Academic Structure: Semesters
 // ==========================================
+export const getAllSemesters = async () => {
+  return db.orm.public.Semester
+    .orderBy([(semester) => semester.year.desc(), (semester) => semester.name.asc()])
+    .all();
+};
+
 export interface CreateSemesterPayload {
   name: string;
   year: number;
@@ -989,6 +1025,23 @@ export const createSemester = async (
 // ==========================================
 // 8. Academic Structure: Course Sections
 // ==========================================
+export const getAllSections = async () => {
+  return db.orm.public.Section
+    .include("course", (course) =>
+      course.select("id", "code", "title", "credit"),
+    )
+    .include("semester", (semester) =>
+      semester.select("id", "name", "year", "startDate", "endDate", "status"),
+    )
+    .include("faculty", (faculty) =>
+      faculty
+        .select("id", "employeeId", "designation", "specialization")
+        .include("user", (user) => user.select("id", "name", "email")),
+    )
+    .orderBy((section) => section.createdAt.desc())
+    .all();
+};
+
 export interface ClassScheduleInput {
   dayOfWeek: string; // 0 = Sunday, 1 = Monday, etc.
   startTime: string; // e.g. "09:00"
@@ -1568,11 +1621,16 @@ export const adminService = {
   deleteStudent,
   getAllFaculty,
   createFaculty,
+  getAllDepartments,
   createDepartment,
   updateDepartment,
+  getAllPrograms,
   createProgram,
+  getAllCourses,
   createCourse,
+  getAllSemesters,
   createSemester,
+  getAllSections,
   createSection,
   getAllEnrollments,
   forceEnrollStudent,

@@ -130,6 +130,20 @@ export const createFaculty = async (req: AuthRequest, res: Response) => {
 };
 
 // 4. Departments
+export const getAllDepartments = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await adminService.getAllDepartments();
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Departments fetched successfully",
+      data,
+    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to fetch departments");
+  }
+};
+
 export const createDepartment = async (req: AuthRequest, res: Response) => {
   try {
     const data = await adminService.createDepartment(
@@ -171,6 +185,20 @@ export const updateDepartment = async (req: AuthRequest, res: Response) => {
 };
 
 // 5. Programs
+export const getAllPrograms = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await adminService.getAllPrograms();
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Programs fetched successfully",
+      data,
+    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to fetch programs");
+  }
+};
+
 export const createProgram = async (req: AuthRequest, res: Response) => {
   try {
     const data = await adminService.createProgram(
@@ -191,6 +219,20 @@ export const createProgram = async (req: AuthRequest, res: Response) => {
 };
 
 // 6. Courses
+export const getAllCourses = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await adminService.getAllCourses();
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Courses fetched successfully",
+      data,
+    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to fetch courses");
+  }
+};
+
 export const createCourse = async (req: AuthRequest, res: Response) => {
   try {
     const data = await adminService.createCourse(
@@ -211,6 +253,20 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
 };
 
 // 7. Semesters
+export const getAllSemesters = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await adminService.getAllSemesters();
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Semesters fetched successfully",
+      data,
+    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to fetch semesters");
+  }
+};
+
 export const createSemester = async (req: AuthRequest, res: Response) => {
   try {
     const data = await adminService.createSemester(
@@ -231,6 +287,20 @@ export const createSemester = async (req: AuthRequest, res: Response) => {
 };
 
 // 8. Sections
+export const getAllSections = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await adminService.getAllSections();
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Sections fetched successfully",
+      data,
+    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to fetch sections");
+  }
+};
+
 export const createSection = async (req: AuthRequest, res: Response) => {
   try {
     const data = await adminService.createSection(
@@ -322,11 +392,16 @@ export const adminController = {
   deleteStudent,
   getAllFaculty,
   createFaculty,
+  getAllDepartments,
   createDepartment,
   updateDepartment,
+  getAllPrograms,
   createProgram,
+  getAllCourses,
   createCourse,
+  getAllSemesters,
   createSemester,
+  getAllSections,
   createSection,
   getAllEnrollments,
   forceEnrollStudent,

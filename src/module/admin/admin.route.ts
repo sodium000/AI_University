@@ -21,19 +21,24 @@ router.get("/faculty", adminAuth, adminController.getAllFaculty);
 router.post("/faculty", adminAuth, adminController.createFaculty);
 
 // 4. Academic Structure: Departments
+router.get("/departments", adminAuth, adminController.getAllDepartments);
 router.post("/departments", adminAuth, adminController.createDepartment);
 router.patch("/departments/:id", adminAuth, adminController.updateDepartment);
 
 // 5. Academic Structure: Programs
+router.get("/programs", adminAuth, adminController.getAllPrograms);
 router.post("/programs", adminAuth, adminController.createProgram);
 
 // 6. Academic Structure: Courses
+router.get("/courses", adminAuth, adminController.getAllCourses);
 router.post("/courses", adminAuth, adminController.createCourse);
 
 // 7. Academic Structure: Semesters
+router.get("/semesters", adminAuth, adminController.getAllSemesters);
 router.post("/semesters", adminAuth, adminController.createSemester);
 
 // 8. Academic Structure: Course Sections
+router.get("/sections", adminAuth, adminController.getAllSections);
 router.post("/sections", adminAuth, adminController.createSection);
 
 // 9. Enrollments & Overrides

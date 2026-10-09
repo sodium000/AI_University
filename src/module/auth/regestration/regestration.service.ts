@@ -28,7 +28,7 @@ const verifyUser = async (payloade: CreateUserPayloade) => {
     throw AppError.conflict(
       "An account with this email already exists. Try logging in instead.",
       ErrorCode.AUTH_EMAIL_ALREADY_EXISTS,
-      { hint: "Use POST /api/v1/login if you already registered." },
+      { hint: "you already registered." },
     );
   }
 

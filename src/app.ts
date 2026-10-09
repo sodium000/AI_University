@@ -18,7 +18,7 @@ const app: Express = express();
 // middleware
 app.use(
   cors({
-    origin: "*",
+    origin: "http://localhost:3000",
     credentials: true,
   }),
 );
@@ -117,9 +117,8 @@ app.use("/auth", logUser);
 app.use("/api/v1/student", studentRoutes);
 app.use("/api/v1/faculty", facultyRoutes);
 app.use("/admin", adminRoutes);
-app.use("/api/v1/admin", adminRoutes);
 app.use("/super-admin", superAdminRoutes);
-app.use("/api/v1/super-admin", superAdminRoutes);
+
 
 app.use(notFoundHandler);
 app.use(errorHandler);

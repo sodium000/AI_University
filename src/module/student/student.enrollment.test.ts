@@ -337,3 +337,82 @@ test("POST /api/v1/student/me/enrollments rejects duplicate enrollment", async (
   assert.equal(response.body.success, false);
   assert.equal(response.body.error.code, "CONFLICT");
 });
+
+test("GET /api/v1/student/me/sections returns an empty catalog when no semester is active", async (t) => {
+  t.after(restoreMocks);
+  stubStudentAuth("STUDENT");
+
+  const publicNamespace = (db as any).orm.public;
+  setMockOrm({
+    ...publicNamespace,
+    Semester: {
+      where: () => ({ all: async () => [] }),
+    },
+    Section: {
+      where: () => {
+        throw new Error("Sections must not be queried without an active semester");
+      },
+    },
+  });
+
+  const response = await request(app)
+    .get("/api/v1/student/me/sections")
+    .set("Authorization", "Bearer test-token");
+
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.success, true);
+  assert.deepEqual(response.body.data, []);
+});
+
+test("GET /api/v1/student/me/sections returns active sections with live enrollment counts", async (t) => {
+  t.after(restoreMocks);
+  stubStudentAuth("STUDENT");
+
+  const section = {
+    id: "section-1",
+    name: "Section A",
+    courseId: "course-1",
+    semesterId: "semester-active",
+    facultyId: "faculty-1",
+    capacity: 30,
+    course: {
+      id: "course-1",
+      code: "CS101",
+      title: "Intro to CS",
+      credit: 3,
+      department: { code: "CSE" },
+    },
+    semester: { id: "semester-active", name: "Fall 2026", year: 2026, status: "ACTIVE" },
+    faculty: { id: "faculty-1", user: { id: "user-faculty", name: "Faculty" } },
+    schedules: [
+      { dayOfWeek: "Monday", startTime: "09:00", endTime: "10:00", room: "R1", building: "Main" },
+    ],
+    enrollments: [{ status: "ENROLLED" }, { status: "DROPPED" }],
+  };
+  const query = {
+    include: () => query,
+    all: async () => [section],
+  };
+  const publicNamespace = (db as any).orm.public;
+  setMockOrm({
+    ...publicNamespace,
+    Semester: {
+      where: () => ({ all: async () => [{ id: "semester-active" }] }),
+    },
+    Section: {
+      where: () => query,
+    },
+  });
+
+  const response = await request(app)
+    .get("/api/v1/student/me/sections")
+    .set("Authorization", "Bearer test-token");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.length, 1);
+  assert.equal(response.body.data[0].course.department, "CSE");
+  assert.equal(response.body.data[0].enrolledCount, 1);
+  assert.equal(response.body.data[0].schedule, "Monday 09:00 - 10:00");
+  assert.equal(response.body.data[0].room, "R1, Main");
+});

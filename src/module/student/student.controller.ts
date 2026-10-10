@@ -48,6 +48,18 @@ const getEnrolledCourses = asyncHandler(async (req: AuthRequest, res: Response) 
   sendSuccess(res, 200, "Enrolled courses retrieved successfully", courses);
 });
 
+const getAvailableSections = asyncHandler(
+  async (_req: AuthRequest, res: Response) => {
+    const sections = await studentService.getAvailableSections();
+    sendSuccess(
+      res,
+      200,
+      "Available course sections retrieved successfully",
+      sections,
+    );
+  },
+);
+
 const getSchedule = asyncHandler(async (req: AuthRequest, res: Response) => {
   const schedule = await studentService.getSchedule(req.student?.id);
   sendSuccess(res, 200, "Schedule retrieved successfully", schedule);
@@ -179,6 +191,7 @@ export const studentController = {
   createProfile,
   updateProfile,
   getEnrolledCourses,
+  getAvailableSections,
   getSchedule,
   enrollCourse,
   dropEnrollment,

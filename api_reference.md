@@ -403,6 +403,18 @@ Updates only the allowed personal fields. Academic fields (department, program, 
 
 ### Courses & Enrollment
 
+#### GET /api/v1/student/me/sections - Get Active Semester Sections
+
+Returns sections whose semester is `ACTIVE`, with associated course, department,
+semester, instructor, capacity, current enrollment count, schedule, and room data.
+
+**Example:**
+```
+GET /api/v1/student/me/sections
+```
+
+---
+
 #### GET /api/v1/student/me/courses — Get Enrolled Courses
 
 Returns all courses the student is enrolled in.

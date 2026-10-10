@@ -195,6 +195,66 @@ const getEnrolledCourses = async (studentId: string, status?: string) => {
   return enrollments;
 };
 
+const getAvailableSections = async () => {
+  const activeSemesters = await db.orm.public.Semester.where({
+    status: "ACTIVE",
+  }).all();
+  const activeSemesterIds = activeSemesters.map((semester) => semester.id);
+
+  if (activeSemesterIds.length === 0) return [];
+
+  const sections = await db.orm.public.Section.where((section) =>
+    section.semesterId.in(activeSemesterIds),
+  )
+    .include("course", (course) =>
+      course
+        .select("id", "code", "title", "description", "credit")
+        .include("department", (department) => department.select("code")),
+    )
+    .include("semester", (semester) =>
+      semester.select("id", "name", "year", "status", "startDate", "endDate"),
+    )
+    .include("faculty", (faculty) =>
+      faculty.include("user", (user) => user.select("id", "name", "email")),
+    )
+    .include("schedules", (schedule) =>
+      schedule.select("dayOfWeek", "startTime", "endTime", "room", "building"),
+    )
+    .include("enrollments", (enrollment) => enrollment.select("id", "status"))
+    .all();
+
+  return sections.map((section: any) => {
+    const schedules = section.schedules ?? [];
+    const enrolledCount = (section.enrollments ?? []).filter(
+      (enrollment: any) => enrollment.status === "ENROLLED",
+    ).length;
+    const schedule = schedules
+      .map((item: any) => item.dayOfWeek + " " + item.startTime + " - " + item.endTime)
+      .join(", ");
+    const firstSchedule = schedules[0];
+
+    return {
+      id: section.id,
+      name: section.name,
+      courseId: section.courseId,
+      semesterId: section.semesterId,
+      facultyId: section.facultyId,
+      capacity: section.capacity,
+      enrolledCount,
+      schedule,
+      room: firstSchedule
+        ? [firstSchedule.room, firstSchedule.building].filter(Boolean).join(", ")
+        : "",
+      course: {
+        ...section.course,
+        department: section.course?.department?.code ?? "",
+      },
+      semester: section.semester,
+      faculty: section.faculty,
+    };
+  });
+};
+
 const getSchedule = async (studentId: string) => {
   if (!studentId) {
     throw new Error("Student profile record not found.");
@@ -1057,6 +1117,7 @@ export const studentService = {
   createProfile,
   updateProfile,
   getEnrolledCourses,
+  getAvailableSections,
   getSchedule,
   enrollCourse,
   dropEnrollment,

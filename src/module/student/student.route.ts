@@ -11,6 +11,11 @@ router.patch("/me", auth("STUDENT"), studentController.updateProfile);
 
 // Courses & Enrollment
 router.get("/me/courses", auth("STUDENT"), studentController.getEnrolledCourses);
+router.get(
+  "/me/sections",
+  auth("STUDENT"),
+  studentController.getAvailableSections,
+);
 router.post("/me/courses", auth("STUDENT"), studentController.enrollCourse);
 router.post("/me/enrollments", auth("STUDENT"), studentController.enrollCourse);
 router.delete(

@@ -13,12 +13,11 @@ const setAuthCookies = (
   secureCookies = false,
 ) => {
 
-   const isProduction = process.env.NODE_ENV === "production";
 
 
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-     secure: true,
+    secure: true,
     sameSite: "none",
     maxAge: 1000 * 60 * 60 * 24,
   });

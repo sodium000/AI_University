@@ -1036,7 +1036,7 @@ const createPaymentCheckoutSession = async (
     .first();
   const customerEmail = student?.user?.email;
 
-  const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:3000")
+  const frontendUrl = (process.env.FRONTEND_URL || "https://frontenduniversity.vercel.app")
     .replace(/\/+$/, "");
 
   // Dynamic line item based on invoice amount

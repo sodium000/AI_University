@@ -11,6 +11,7 @@ router.patch("/me", auth("FACULTY"), facultyController.updateProfile);
 
 // Sections & Students taught by faculty
 router.get("/me/sections", auth("FACULTY"), facultyController.getMySections);
+router.get("/me/assignments", auth("FACULTY"), facultyController.getMyAssignments);
 router.get("/me/students", auth("FACULTY"), facultyController.getMyStudents);
 
 // Section detail (roster, schedule, meta) — must teach it
@@ -50,6 +51,7 @@ router.post("/results", auth("FACULTY"), facultyController.postResult);
 router.patch("/results/:id", auth("FACULTY"), facultyController.correctResult);
 
 // Exams
+router.get("/exams", auth("FACULTY"), facultyController.getMyExams);
 router.post("/exams", auth("FACULTY"), facultyController.createExam);
 
 export const facultyRoutes = router;

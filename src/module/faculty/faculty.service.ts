@@ -308,6 +308,21 @@ const getMySections = async (
   });
 };
 
+const getMyAssignments = async (facultyId: string) => {
+  if (!facultyId) {
+    throw new Error("Faculty profile record not found.");
+  }
+
+  return db.orm.public.Assignment.where({ facultyId })
+    .include("section", (section) =>
+      section
+        .select("id", "name", "courseId")
+        .include("course", (course) => course.select("id", "code", "title")),
+    )
+    .orderBy((assignment) => assignment.deadline.asc())
+    .all();
+};
+
 const getMyStudents = async (
   facultyId: string,
   filters?: { sectionId?: string; search?: string },
@@ -964,11 +979,27 @@ const createExam = async (facultyId: string, payload: CreateExamPayload) => {
   return exam;
 };
 
+const getMyExams = async (facultyId: string) => {
+  if (!facultyId) {
+    throw new Error("Faculty profile record not found.");
+  }
+
+  return db.orm.public.Exam.where({ facultyId })
+    .include("section", (section) =>
+      section
+        .select("id", "name", "courseId")
+        .include("course", (course) => course.select("id", "code", "title")),
+    )
+    .orderBy((exam) => exam.examDate.asc())
+    .all();
+};
+
 export const facultyService = {
   getProfile,
   createProfile,
   updateProfile,
   getMySections,
+  getMyAssignments,
   getMyStudents,
   getSectionDetail,
   recordAttendance,
@@ -978,5 +1009,6 @@ export const facultyService = {
   getAssignmentSubmissions,
   postResult,
   correctResult,
+  getMyExams,
   createExam,
 };

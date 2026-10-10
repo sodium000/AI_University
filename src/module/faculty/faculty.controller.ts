@@ -68,6 +68,11 @@ const getMySections = asyncHandler(async (req: AuthRequest, res: Response) => {
   sendSuccess(res, 200, "Taught sections retrieved successfully", sections);
 });
 
+const getMyAssignments = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const assignments = await facultyService.getMyAssignments(req.faculty?.id);
+  sendSuccess(res, 200, "Faculty assignments retrieved successfully", assignments);
+});
+
 const getMyStudents = asyncHandler(async (req: AuthRequest, res: Response) => {
   const students = await facultyService.getMyStudents(req.faculty?.id, {
     sectionId: req.query.sectionId as string,
@@ -163,11 +168,17 @@ const createExam = asyncHandler(async (req: AuthRequest, res: Response) => {
   sendSuccess(res, 201, "Exam scheduled successfully", exam);
 });
 
+const getMyExams = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const exams = await facultyService.getMyExams(req.faculty?.id);
+  sendSuccess(res, 200, "Faculty exams retrieved successfully", exams);
+});
+
 export const facultyController = {
   getProfile,
   createProfile,
   updateProfile,
   getMySections,
+  getMyAssignments,
   getMyStudents,
   getSectionDetail,
   recordAttendance,
@@ -177,5 +188,6 @@ export const facultyController = {
   getAssignmentSubmissions,
   postResult,
   correctResult,
+  getMyExams,
   createExam,
 };

@@ -1012,6 +1012,10 @@ Corrects a previously recorded attendance entry.
 
 ### Assignments
 
+#### GET /api/v1/faculty/me/assignments — Get My Assignments
+
+Returns assignments created by the authenticated faculty member, ordered by deadline. Each assignment includes its section and course.
+
 #### POST /api/v1/faculty/assignments — Create Assignment
 
 Creates a new assignment for a course section.
@@ -1142,6 +1146,12 @@ Updates a previously posted result (e.g. after re-evaluation).
 ---
 
 ### Exams
+
+#### GET /api/v1/faculty/exams — Get My Exams
+
+Returns exams created by the authenticated faculty member, ordered by exam date. Each exam includes its section and course.
+
+---
 
 #### POST /api/v1/faculty/exams — Create Exam
 

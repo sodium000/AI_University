@@ -515,6 +515,8 @@ model Attendance {
   student   Student  @relation(fields: [studentId], references: [id])
 
   createdAt DateTime @default(now())
+
+  @@unique([studentId, date])
 }
 
 // ============================================================

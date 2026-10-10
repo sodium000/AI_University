@@ -1,0 +1,44 @@
+[
+  {
+    "id": "unique.attendance.attendance_studentId_date_key",
+    "label": "Add unique constraint on \"attendance\" (studentId, date)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "attendance_studentId_date_key",
+        "table": "attendance"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"attendance_studentId_date_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "attendance_studentId_date_key",
+          "public",
+          "\"public\".\"attendance\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"attendance_studentId_date_key\"",
+        "sql": "ALTER TABLE \"public\".\"attendance\" ADD CONSTRAINT \"attendance_studentId_date_key\" UNIQUE (\"studentId\", \"date\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"attendance_studentId_date_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "attendance_studentId_date_key",
+          "public",
+          "\"public\".\"attendance\""
+        ]
+      }
+    ]
+  }
+]

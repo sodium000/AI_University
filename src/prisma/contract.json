@@ -3344,7 +3344,14 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "studentId",
+                    "date"
+                  ]
+                }
+              ]
             },
             "auditLog": {
               "columns": {
@@ -5267,7 +5274,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "512f2f40678e28ba257205f0b603f5f309beea9b0d58173af305182f81151468"
+    "storageHash": "d75485f2acf93767f60b8a77aa829667903b3c66489ec941d15936049de9ca77"
   },
   "execution": {
     "executionHash": "fda2f60c4136471bcaf88f23ada87a76c52016a8111e59a16b957824a3ff3eb6",

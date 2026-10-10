@@ -974,11 +974,24 @@ Records attendance for all students in a section on a given date.
   "statusCode": 201,
   "message": "Attendance recorded successfully",
   "data": {
-    "recorded": 3,
-    "date": "2026-09-23"
+    "sectionId": "<section_uuid>",
+    "date": "2026-09-23T00:00:00Z",
+    "totalRecorded": 2,
+    "alreadyRecorded": 1,
+    "skippedStudentIds": ["<student_uuid>"],
+    "records": [
+      {
+        "id": "<attendance_uuid>",
+        "studentId": "<student_uuid>",
+        "date": "2026-09-23T00:00:00Z",
+        "status": "PRESENT"
+      }
+    ]
   }
 }
 ```
+
+An attendance entry is allowed once per student per UTC calendar day, across all sections. Repeated student IDs in one request are collapsed. Students who already have an entry for that day are skipped; if every submitted student already has an entry, the API returns `409 CONFLICT`.
 
 ---
 

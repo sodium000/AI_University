@@ -3,10 +3,41 @@ import { Temporal } from "@js-temporal/polyfill";
 import { jwtUtils } from "../../utils/createJwtToken";
 import config from "../../config";
 import { SignOptions } from "jsonwebtoken";
+import { AppError } from "../../errors/AppError";
 
 const toInstant = (d?: Date | string | null) => {
   if (!d) return Temporal.Now.instant();
   return Temporal.Instant.from(new Date(d).toISOString());
+};
+
+const toAttendanceDay = (date?: Date | string | null) => {
+  const instant = toInstant(date);
+  const day = instant.toZonedDateTimeISO("UTC").toPlainDate();
+  return {
+    date: Temporal.Instant.from(`${day.toString()}T00:00:00Z`),
+    nextDate: Temporal.Instant.from(
+      `${day.add({ days: 1 }).toString()}T00:00:00Z`,
+    ),
+  };
+};
+
+const isUniqueConstraintViolation = (error: unknown): boolean => {
+  let current = error;
+  const seen = new Set<object>();
+
+  while (typeof current === "object" && current !== null && !seen.has(current)) {
+    seen.add(current);
+    if (
+      ("code" in current &&
+        (current.code === "23505" || current.code === "P2002")) ||
+      ("sqlState" in current && current.sqlState === "23505")
+    ) {
+      return true;
+    }
+    current = "cause" in current ? current.cause : null;
+  }
+
+  return false;
 };
 
 const calculateGrade = (
@@ -475,22 +506,59 @@ const recordAttendance = async (
     );
   }
 
-  const attendanceDate = toInstant(payload.date || new Date());
-
-  const createdRecords = await Promise.all(
-    payload.records.map((rec) =>
-      db.orm.public.Attendance.create({
-        studentId: rec.studentId,
-        date: attendanceDate,
-        status: rec.status.toUpperCase(),
-      }),
-    ),
+  const { date: attendanceDate, nextDate } = toAttendanceDay(payload.date);
+  const uniqueRecords = [
+    ...new Map(payload.records.map((record) => [record.studentId, record])).values(),
+  ];
+  const existingRecords = await db.orm.public.Attendance.where((attendance) =>
+    attendance.studentId.in(uniqueRecords.map((record) => record.studentId)),
+  )
+    .where((attendance) => attendance.date.gte(attendanceDate))
+    .where((attendance) => attendance.date.lt(nextDate))
+    .all();
+  const existingStudentIds = new Set(
+    existingRecords.map((attendance) => attendance.studentId),
   );
+  const recordsToCreate = uniqueRecords.filter(
+    (record) => !existingStudentIds.has(record.studentId),
+  );
+
+  if (recordsToCreate.length === 0) {
+    throw AppError.conflict(
+      "Attendance has already been recorded for every student on this date.",
+    );
+  }
+
+  let createdRecords;
+  try {
+    createdRecords = await db.transaction((tx) =>
+      Promise.all(
+        recordsToCreate.map((rec) =>
+          tx.orm.public.Attendance.create({
+            studentId: rec.studentId,
+            date: attendanceDate,
+            status: rec.status.toUpperCase(),
+          }),
+        ),
+      ),
+    );
+  } catch (error) {
+    if (isUniqueConstraintViolation(error)) {
+      throw AppError.conflict(
+        "Attendance has already been recorded for one or more students on this date.",
+      );
+    }
+    throw error;
+  }
 
   return {
     sectionId,
     date: attendanceDate,
     totalRecorded: createdRecords.length,
+    alreadyRecorded: uniqueRecords.length - recordsToCreate.length,
+    skippedStudentIds: uniqueRecords
+      .filter((record) => existingStudentIds.has(record.studentId))
+      .map((record) => record.studentId),
     records: createdRecords,
   };
 };
@@ -533,16 +601,38 @@ const correctAttendance = async (
     updateData.status = payload.status.toUpperCase();
   }
   if (payload.date !== undefined) {
-    updateData.date = toInstant(payload.date);
+    const { date, nextDate } = toAttendanceDay(payload.date);
+    const sameDayRecords = await db.orm.public.Attendance.where((record) =>
+      record.studentId.eq(attendance.studentId),
+    )
+      .where((record) => record.date.gte(date))
+      .where((record) => record.date.lt(nextDate))
+      .all();
+    if (sameDayRecords.some((record) => record.id !== attendanceId)) {
+      throw AppError.conflict(
+        "Attendance already exists for this student on the requested date.",
+      );
+    }
+    updateData.date = date;
   }
 
   if (Object.keys(updateData).length === 0) {
     throw new Error("No update fields provided.");
   }
 
-  const updated = await db.orm.public.Attendance.where({
-    id: attendanceId,
-  }).update(updateData);
+  let updated;
+  try {
+    updated = await db.orm.public.Attendance.where({
+      id: attendanceId,
+    }).update(updateData);
+  } catch (error) {
+    if (isUniqueConstraintViolation(error)) {
+      throw AppError.conflict(
+        "Attendance already exists for this student on the requested date.",
+      );
+    }
+    throw error;
+  }
 
   return updated;
 };

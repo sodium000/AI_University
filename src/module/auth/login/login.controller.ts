@@ -18,15 +18,15 @@ const setAuthCookies = (
 
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-     secure: isProduction,
-    sameSite: isProduction ? ("none" as const) : ("lax" as const),
+     secure: true,
+    sameSite: "none",
     maxAge: 1000 * 60 * 60 * 24,
   });
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? ("none" as const) : ("lax" as const),
+    secure: true,
+    sameSite: "none",
     maxAge: 1000 * 60 * 60 * 24 * 7,
   });
 };

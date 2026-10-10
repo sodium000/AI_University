@@ -15,10 +15,31 @@ import { AppError } from "./errors/AppError";
 
 const app: Express = express();
 
+const configuredCorsOrigins = [
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+  ...(process.env.CORS_ORIGINS?.split(",") ?? []),
+]
+  .filter((origin): origin is string => Boolean(origin?.trim()))
+  .map((origin) => {
+    let parsedOrigin: URL;
+    try {
+      parsedOrigin = new URL(origin.trim());
+    } catch {
+      throw new Error(`Invalid CORS origin configured: ${origin}`);
+    }
+    if (parsedOrigin.protocol !== "http:" && parsedOrigin.protocol !== "https:") {
+      throw new Error(`CORS origin must use HTTP or HTTPS: ${origin}`);
+    }
+    return parsedOrigin.origin;
+  });
+
 // middleware
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: (origin, callback) => {
+      callback(null, !origin || configuredCorsOrigins.includes(origin));
+    },
     credentials: true,
   }),
 );

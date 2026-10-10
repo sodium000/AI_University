@@ -227,6 +227,9 @@ Copy `.env.example` to `.env` and fill in all values:
 # Server
 PORT=5000
 APP_URL=http://localhost:5000
+FRONTEND_URL=http://localhost:3000
+# Comma-separated extra frontend origins, e.g. https://my-frontend.vercel.app
+CORS_ORIGINS=
 
 # Database (Prisma Platform / PostgreSQL >= 15)
 DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
@@ -458,6 +461,13 @@ vercel --prod
 
 > Set all environment variables in the Vercel Dashboard under  
 > **Project Settings > Environment Variables** before deploying.
+
+For a separately deployed frontend, set `FRONTEND_URL` to its exact origin
+(scheme and hostname, with no path), for example
+`https://my-frontend.vercel.app`. If multiple frontends need access, add their
+exact origins as a comma-separated list in `CORS_ORIGINS`. Do not use `*`:
+credentialed browser requests require an explicit allowed origin. Redeploy the
+backend after changing these variables.
 
 ---
 

@@ -54,10 +54,25 @@ const getSchedule = asyncHandler(async (req: AuthRequest, res: Response) => {
 });
 
 const enrollCourse = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const enrollment = await studentService.enrollCourse(
-    req.student?.id,
-    req.body.sectionId,
-  );
+  if (!req.student?.id) {
+    throw AppError.unauthorized(
+      "Unauthorized: authenticated student context is missing.",
+      ErrorCode.AUTH_CONTEXT_MISSING,
+      {
+        hint: "Ensure the Authorization header or accessToken cookie is sent with a valid STUDENT token.",
+      },
+    );
+  }
+
+  const sectionId = typeof req.body?.sectionId === "string" ? req.body.sectionId.trim() : "";
+  if (!sectionId) {
+    throw AppError.badRequest("sectionId is required.", ErrorCode.BAD_REQUEST, {
+      details: { field: "sectionId" },
+      hint: "Send { \"sectionId\": \"<section_uuid>\" } in the request body.",
+    });
+  }
+
+  const enrollment = await studentService.enrollCourse(req.student.id, sectionId);
   sendSuccess(res, 201, "Successfully enrolled in course section", enrollment);
 });
 

@@ -2,6 +2,8 @@ import { db } from "../../prisma/db";
 import { Temporal } from "@js-temporal/polyfill";
 import config from "../../config";
 import { stripe } from "../../config/stripe";
+import { AppError } from "../../errors/AppError";
+import { ErrorCode } from "../../errors/errorCodes";
 
 const toInstant = (d?: Date | string | null) => {
   if (!d) return Temporal.Now.instant();
@@ -303,63 +305,105 @@ const createInvoiceForEnrollment = async (studentId: string, section: any) => {
   return invoice;
 };
 
+const serializeEnrollment = (enrollment: {
+  id: string;
+  studentId: string;
+  sectionId: string;
+  status: string;
+  enrolledAt?: Date | string | null;
+}) => ({
+  id: enrollment.id,
+  studentId: enrollment.studentId,
+  sectionId: enrollment.sectionId,
+  status: enrollment.status,
+  enrolledAt: enrollment.enrolledAt
+    ? new Date(enrollment.enrolledAt).toISOString()
+    : new Date().toISOString(),
+});
+
 const enrollCourse = async (studentId: string, sectionId: string) => {
   if (!studentId) {
-    throw new Error("Student profile record not found.");
-  }
-  if (!sectionId) {
-    throw new Error("sectionId is required.");
+    throw AppError.unauthorized(
+      "Student profile record not found.",
+      ErrorCode.AUTH_CONTEXT_MISSING,
+    );
   }
 
-  const section = await db.orm.public.Section.where({ id: sectionId })
+  const normalizedSectionId = typeof sectionId === "string" ? sectionId.trim() : "";
+  if (!normalizedSectionId) {
+    throw AppError.badRequest("sectionId is required.", ErrorCode.BAD_REQUEST, {
+      details: { field: "sectionId" },
+      hint: "Send a valid sectionId in the request body.",
+    });
+  }
+
+  const section = await db.orm.public.Section.where({ id: normalizedSectionId })
     .include("course")
     .include("semester")
     .first();
 
   if (!section) {
-    throw new Error("Section not found.");
+    throw AppError.notFound("Section not found.", ErrorCode.NOT_FOUND, {
+      details: { field: "sectionId", value: normalizedSectionId },
+      hint: "Use a valid section UUID that exists in the system.",
+    });
   }
 
-  // Check section capacity
   const currentEnrollments = await db.orm.public.Enrollment.where({
-    sectionId,
+    sectionId: normalizedSectionId,
     status: "ENROLLED" as any,
   }).all();
 
   if (currentEnrollments.length >= section.capacity) {
-    throw new Error(
-      `Section capacity reached (${section.capacity}/${section.capacity}).`,
+    throw AppError.badRequest(
+      `Section is full. Capacity reached for section ${normalizedSectionId}.`,
+      ErrorCode.BAD_REQUEST,
+      {
+        details: {
+          field: "sectionId",
+          sectionId: normalizedSectionId,
+          capacity: section.capacity,
+        },
+        hint: "Choose another section or wait for a seat to open up.",
+      },
     );
   }
 
-  // Check existing enrollment in this section
   const existing = await db.orm.public.Enrollment.where({
     studentId,
-    sectionId,
+    sectionId: normalizedSectionId,
   }).first();
 
   if (existing) {
     if (existing.status === "ENROLLED") {
-      throw new Error("You are already enrolled in this section.");
+      throw AppError.conflict(
+        "You are already enrolled in this section.",
+        ErrorCode.CONFLICT,
+        {
+          details: {
+            studentId,
+            sectionId: normalizedSectionId,
+          },
+        },
+      );
     }
-    // Re-enroll if previously dropped
-    const updated = await db.orm.public.Enrollment.where({
-      id: existing.id,
-    }).update({
+
+    await db.orm.public.Enrollment.where({ id: existing.id }).update({
       status: "ENROLLED" as any,
       enrolledAt: toInstant(),
     });
 
-    // Create an invoice for re-enrollment
-    const invoice = await createInvoiceForEnrollment(studentId, section);
+    await createInvoiceForEnrollment(studentId, section);
 
-    return {
-      ...updated,
-      invoice,
-    };
+    return serializeEnrollment({
+      id: existing.id,
+      studentId,
+      sectionId: normalizedSectionId,
+      status: "ENROLLED",
+      enrolledAt: new Date().toISOString(),
+    });
   }
 
-  // Check if enrolled in another section of the same course in the same semester
   const activeStudentEnrollments = await db.orm.public.Enrollment.where({
     studentId,
     status: "ENROLLED" as any,
@@ -374,26 +418,35 @@ const enrollCourse = async (studentId: string, sectionId: string) => {
   );
 
   if (isSameCourseEnrolled) {
-    throw new Error(
+    throw AppError.conflict(
       "You are already enrolled in another section of this course for this semester.",
+      ErrorCode.CONFLICT,
+      {
+        details: {
+          studentId,
+          courseId: section.courseId,
+          semesterId: section.semesterId,
+        },
+      },
     );
   }
 
-  // Create new enrollment
   const enrollment = await db.orm.public.Enrollment.create({
     studentId,
-    sectionId,
+    sectionId: normalizedSectionId,
     status: "ENROLLED" as any,
     enrolledAt: toInstant(),
   });
 
-  // Automatically create invoice for this enrollment
-  const invoice = await createInvoiceForEnrollment(studentId, section);
+  await createInvoiceForEnrollment(studentId, section);
 
-  return {
-    ...enrollment,
-    invoice,
-  };
+  return serializeEnrollment({
+    id: enrollment.id,
+    studentId: enrollment.studentId,
+    sectionId: enrollment.sectionId,
+    status: enrollment.status,
+    enrolledAt: enrollment.enrolledAt,
+  });
 };
 
 const dropEnrollment = async (

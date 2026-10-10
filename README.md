@@ -307,7 +307,7 @@ Full API documentation is available in [`api_reference.md`](./api_reference.md).
 
 **Base URL:** `http://localhost:5000`
 
-**Auth Header (protected routes):**
+**Auth for protected routes:**
 
 ```
 Authorization: Bearer <your_access_token>

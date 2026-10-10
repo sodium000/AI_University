@@ -3,7 +3,7 @@
 > **Base URL (Local):** `http://localhost:5000`
 > **Base URL (Production):** `https://ai-agentic-university.vercel.app`
 >
-> **Auth Header (all protected routes):**
+> **Auth for all protected routes:**
 > ```
 > Authorization: Bearer <your_access_token>
 > ```
@@ -15,9 +15,41 @@
 
 - [Standard Response Format](#standard-response-format)
 - [Auth APIs](#-auth-apis-no-token-required)
+  - [Register — Send OTP](#1-register-user--step-1-send-otp)
+  - [Verify OTP & Create Account](#2-verify-otp--create-account--step-2)
+  - [Login](#3-login)
+  - [Refresh Access Token](#4-refresh-access-token)
+  - [Logout](#5-logout)
+  - [Forgot Password](#6-forgot-password--send-reset-otp)
+  - [Reset Password](#7-reset-password)
+  - [Get My Info](#8-get-my-info)
 - [Student APIs](#-student-apis)
+  - [Profile](#profile)
+  - [Courses & Enrollment](#courses--enrollment)
+  - [Schedule & Attendance](#schedule--attendance)
+  - [Results & Transcript](#results--transcript)
+  - [Assignments](#assignments)
+  - [Billing & Payments](#-billing--payments)
+  - [Notifications](#notifications)
 - [Faculty APIs](#-faculty-apis)
+  - [Profile](#profile-1)
+  - [Sections & Students](#sections--students)
+  - [Attendance](#attendance)
+  - [Assignments](#assignments-1)
+  - [Academic Results](#academic-results)
+  - [Exams](#exams)
 - [Admin APIs](#️-admin-apis)
+  - [Dashboard](#dashboard)
+  - [Student Management](#student-management)
+  - [Faculty Management](#faculty-management)
+  - [Departments](#departments)
+  - [Programs](#programs)
+  - [Courses](#courses)
+  - [Semesters](#semesters)
+  - [Sections](#sections)
+  - [Enrollments](#enrollments)
+  - [Payments](#payments)
+  - [Reports](#reports)
 - [Super Admin APIs](#-super-admin-apis)
 - [Payment Webhooks & Redirects](#-payment-webhooks--redirects)
 - [Error Codes](#-error-codes)
@@ -130,7 +162,7 @@ Verifies the OTP from Redis. On success, the user account is created and a JWT t
 ### 3. Login
 
 ```
-POST /api/v1/login
+POST /api/v1/auth/login
 ```
 
 **Request Body:**
@@ -166,7 +198,7 @@ POST /api/v1/login
 ### 4. Refresh Access Token
 
 ```
-POST /api/v1/refresh-token
+POST /api/v1/auth/refresh-token
 ```
 
 Exchange a valid refresh token for a new access token. Useful when the access token has expired.
@@ -197,7 +229,7 @@ Exchange a valid refresh token for a new access token. Useful when the access to
 ### 5. Logout
 
 ```
-POST /api/v1/logout
+POST /api/v1/auth/logout
 ```
 
 Clears the `accessToken` and `refreshToken` cookies. No request body needed.
@@ -216,7 +248,7 @@ Clears the `accessToken` and `refreshToken` cookies. No request body needed.
 ### 6. Forgot Password — Send Reset OTP
 
 ```
-POST /api/v1/forgot-password
+POST /api/v1/auth/forgot-password
 ```
 
 Sends a password-reset OTP to the given email. OTP expires in **5 minutes**.
@@ -233,7 +265,7 @@ Sends a password-reset OTP to the given email. OTP expires in **5 minutes**.
 ### 7. Reset Password
 
 ```
-POST /api/v1/reset-password
+POST /api/v1/auth/reset-password
 ```
 
 Resets the user's password after verifying the OTP from the forgot-password flow.
@@ -261,12 +293,12 @@ Resets the user's password after verifying the OTP from the forgot-password flow
 ### 8. Get My Info
 
 ```
-GET /api/v1/me/:id
+GET /api/v1/auth/me/:id
 ```
 
 > Replace `:id` with the actual user UUID.
 
-Returns the authenticated user's account info (no token required for this route — ID is in path).
+Returns the authenticated user's account info. Requires a valid Bearer token.
 
 **Success Response (200):**
 ```json
@@ -731,6 +763,46 @@ GET /api/v1/student/me/notifications?unreadOnly=true
 
 ---
 
+#### PATCH /api/v1/student/me/notifications/:id/read — Mark Notification as Read
+
+Marks a single notification as read.
+
+> Replace `:id` with the **notification UUID**.
+
+No request body required.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Notification marked as read.",
+  "data": {
+    "id": "uuid",
+    "isRead": true
+  }
+}
+```
+
+---
+
+#### PATCH /api/v1/student/me/notifications/read-all — Mark All Notifications as Read
+
+Marks all unread notifications as read for the logged-in user.
+
+No request body required.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "All notifications marked as read."
+}
+```
+
+---
+
 ## 👨‍🏫 Faculty APIs
 
 > **Role Required:** `FACULTY` (most routes) or `STUDENT` / `FACULTY` (profile creation)
@@ -745,6 +817,27 @@ GET /api/v1/student/me/notifications?unreadOnly=true
 Returns the logged-in faculty's full profile including department info.
 
 > Accessible by both `FACULTY` and `STUDENT` role tokens.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Faculty profile fetched successfully.",
+  "data": {
+    "id": "uuid",
+    "employeeId": "FAC20262596",
+    "userId": "uuid",
+    "designation": "Assistant Professor",
+    "specialization": "Artificial Intelligence & Data Science",
+    "joiningDate": "2026-01-15",
+    "phone": "01811000000",
+    "photoUrl": "https://example.com/faculty.jpg",
+    "user": { "id": "uuid", "name": "Dr. Rahim", "email": "rahim@university.edu", "role": "FACULTY" },
+    "department": { "id": "uuid", "name": "Computer Science & Engineering", "code": "CSE" }
+  }
+}
+```
 
 ---
 
@@ -1132,8 +1225,16 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/admin/faculty` | List all faculty members |
+| `GET` | `/api/v1/admin/faculty` | List all faculty members (supports query filters) |
 | `POST` | `/api/v1/admin/faculty` | Create a faculty account + profile |
+| `PATCH` | `/api/v1/admin/faculty/:id` | Update a faculty record |
+| `DELETE` | `/api/v1/admin/faculty/:id` | Deactivate or hard-delete a faculty member |
+
+**GET Query Parameters (optional):**
+| Param | Description |
+|-------|-------------|
+| `departmentId` | Filter by department |
+| `search` | Search by name, email, or employeeId |
 
 **POST create faculty body:**
 ```json
@@ -1149,14 +1250,31 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
 }
 ```
 
+**PATCH update faculty body (all fields optional):**
+```json
+{
+  "phone": "01900000000",
+  "photoUrl": "https://example.com/photo.jpg",
+  "designation": "Professor",
+  "specialization": "Machine Learning"
+}
+```
+
+**DELETE Query Parameters (optional):**
+| Param | Type | Description |
+|-------|------|-------------|
+| `hard` | boolean string | Pass `?hard=true` to permanently delete. Default is soft deactivation. |
+
 ---
 
 ### Departments
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/api/v1/admin/departments` | List all departments |
 | `POST` | `/api/v1/admin/departments` | Create a new department |
 | `PATCH` | `/api/v1/admin/departments/:id` | Update a department |
+| `DELETE` | `/api/v1/admin/departments/:id` | Delete a department |
 
 **POST create department body:**
 ```json
@@ -1167,13 +1285,29 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
 }
 ```
 
+**PATCH update department body (all fields optional):**
+```json
+{
+  "name": "Computer Science & Engineering",
+  "code": "CSE",
+  "facultyName": "Faculty of Engineering"
+}
+```
+
 ---
 
 ### Programs
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/api/v1/admin/programs` | List all degree programs |
 | `POST` | `/api/v1/admin/programs` | Create a new degree program |
+| `PATCH` | `/api/v1/admin/programs/:id` | Update a degree program |
+
+**GET Query Parameters (optional):**
+| Param | Description |
+|-------|-------------|
+| `departmentId` | Filter by department |
 
 **POST create program body:**
 ```json
@@ -1192,7 +1326,16 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/api/v1/admin/courses` | List all courses |
 | `POST` | `/api/v1/admin/courses` | Create a new course |
+| `PATCH` | `/api/v1/admin/courses/:id` | Update a course |
+
+**GET Query Parameters (optional):**
+| Param | Description |
+|-------|-------------|
+| `departmentId` | Filter by department |
+| `programId` | Filter by program |
+| `search` | Search by course code or title |
 
 **POST create course body:**
 ```json
@@ -1212,7 +1355,9 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/api/v1/admin/semesters` | List all semesters |
 | `POST` | `/api/v1/admin/semesters` | Create a new semester |
+| `PATCH` | `/api/v1/admin/semesters/:id` | Update a semester (e.g. change status) |
 
 **POST create semester body:**
 ```json
@@ -1233,11 +1378,21 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/api/v1/admin/sections` | List all course sections |
 | `POST` | `/api/v1/admin/sections` | Create a course section |
+| `PATCH` | `/api/v1/admin/sections/:id` | Update a course section |
+
+**GET Query Parameters (optional):**
+| Param | Description |
+|-------|-------------|
+| `semesterId` | Filter by semester |
+| `courseId` | Filter by course |
+| `facultyId` | Filter by faculty |
 
 **POST create section body:**
 ```json
 {
+  "name": "Section A",
   "courseId": "<course_uuid>",
   "semesterId": "<semester_uuid>",
   "facultyId": "<faculty_uuid>",
@@ -1254,6 +1409,7 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
 }
 ```
 
+> `name` — required, human-readable section identifier (e.g. `"Section A"`, `"CSE301-A"`)
 > `dayOfWeek` options: `MONDAY` | `TUESDAY` | `WEDNESDAY` | `THURSDAY` | `FRIDAY` | `SATURDAY` | `SUNDAY`
 
 ---

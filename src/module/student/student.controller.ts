@@ -20,6 +20,20 @@ const requireUserId = (req: AuthRequest) => {
   return userId;
 };
 
+const requireStudentId = (req: AuthRequest) => {
+  const studentId = req.student?.id;
+  if (!studentId) {
+    throw AppError.unauthorized(
+      "Student profile record not found for the signed-in account.",
+      ErrorCode.AUTH_CONTEXT_MISSING,
+      {
+        hint: "Ask an administrator to create or link the student profile, then sign in again.",
+      },
+    );
+  }
+  return studentId;
+};
+
 const getProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
   const profile = await studentService.getProfile(req.user?.id);
   sendSuccess(res, 200, "Student profile fetched successfully", profile);
@@ -135,12 +149,12 @@ const submitAssignment = asyncHandler(async (req: AuthRequest, res: Response) =>
 });
 
 const getInvoices = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const invoices = await studentService.getInvoices(req.student?.id);
+  const invoices = await studentService.getInvoices(requireStudentId(req));
   sendSuccess(res, 200, "Invoices retrieved successfully", invoices);
 });
 
 const getPayments = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const payments = await studentService.getPayments(req.student?.id);
+  const payments = await studentService.getPayments(requireStudentId(req));
   sendSuccess(res, 200, "Payments retrieved successfully", payments);
 });
 
@@ -162,7 +176,7 @@ const createPaymentCheckoutSession = asyncHandler(
     }
 
     const data = await studentService.createPaymentCheckoutSession(
-      req.student?.id,
+      requireStudentId(req),
       invoiceId,
     );
     sendSuccess(res, 200, "Stripe checkout session created successfully", data);
@@ -177,7 +191,10 @@ const verifyPayment = asyncHandler(async (req: AuthRequest, res: Response) => {
     });
   }
 
-  const data = await studentService.verifyAndFulfillPayment(sessionId);
+  const data = await studentService.verifyAndFulfillPayment(
+    sessionId,
+    requireStudentId(req),
+  );
   sendSuccess(
     res,
     200,

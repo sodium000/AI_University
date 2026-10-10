@@ -2,6 +2,7 @@ import { db } from "../../prisma/db";
 import { Temporal } from "@js-temporal/polyfill";
 import bcrypt from "bcryptjs";
 import config from "../../config";
+import { AppError } from "../../errors/AppError";
 
 const toInstant = (d?: Date | string | null) => {
   if (!d) return Temporal.Now.instant();
@@ -224,6 +225,192 @@ export const getAllStudents = async (filters: StudentQueryFilters) => {
       totalPages: Math.ceil((totalRes?.count ?? 0) / limit),
     },
     students: filteredStudents,
+  };
+};
+
+export const getPendingStudentRegistrations = async () => {
+  const users = await db.orm.public.User.where({
+    role: "STUDENT",
+  })
+    .include("student", (student) => student.select("id"))
+    .orderBy((user) => user.createdAt.asc())
+    .all();
+
+  return users
+    .filter(
+      (user) =>
+        !user.student &&
+        (user.status === "INACTIVE" || user.status === "ACTIVE"),
+    )
+    .map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      status: user.status,
+      createdAt: user.createdAt,
+    }));
+};
+
+export interface ApproveStudentRegistrationPayload {
+  departmentId: string;
+  programId: string;
+  admissionYear: number;
+  currentYear?: number;
+  currentSemester?: number;
+  studentId?: string;
+}
+
+export const approveStudentRegistration = async (
+  userId: string,
+  payload: ApproveStudentRegistrationPayload,
+  adminUserId?: string,
+  clientIp?: string,
+  userAgent?: string,
+) => {
+  if (
+    !payload ||
+    !payload.departmentId ||
+    !payload.programId ||
+    !Number.isSafeInteger(Number(payload.admissionYear)) ||
+    Number(payload.admissionYear) < 1900
+  ) {
+    throw AppError.badRequest(
+      "Department, program, and a valid admission year are required.",
+    );
+  }
+  if (
+    (payload.currentYear !== undefined &&
+      (!Number.isSafeInteger(Number(payload.currentYear)) ||
+        Number(payload.currentYear) < 1)) ||
+    (payload.currentSemester !== undefined &&
+      (!Number.isSafeInteger(Number(payload.currentSemester)) ||
+        Number(payload.currentSemester) < 1))
+  ) {
+    throw AppError.badRequest(
+      "Current year and semester must be positive whole numbers.",
+    );
+  }
+
+  const user = await db.orm.public.User.where({
+    id: userId,
+    role: "STUDENT",
+  }).first();
+  if (!user || (user.status !== "INACTIVE" && user.status !== "ACTIVE")) {
+    throw AppError.notFound("Student registration was not found.");
+  }
+
+  const existingStudent = await db.orm.public.Student.where({ userId }).first();
+  if (existingStudent) {
+    throw AppError.conflict("A student profile already exists for this account.");
+  }
+
+  const [department, program] = await Promise.all([
+    db.orm.public.Department.where({ id: payload.departmentId }).first(),
+    db.orm.public.Program.where({ id: payload.programId }).first(),
+  ]);
+  if (!department) throw AppError.notFound("Department not found.");
+  if (!program || program.departmentId !== department.id) {
+    throw AppError.badRequest(
+      "The selected program does not belong to this department.",
+    );
+  }
+
+  let studentId = payload.studentId?.trim();
+  if (studentId) {
+    const duplicate = await db.orm.public.Student.where({ studentId }).first();
+    if (duplicate) {
+      throw AppError.conflict(`Student ID '${studentId}' already exists.`);
+    }
+  } else {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const suffix = Math.floor(1000 + Math.random() * 9000);
+      const candidate = `STU${payload.admissionYear}${suffix}`;
+      const duplicate = await db.orm.public.Student.where({
+        studentId: candidate,
+      }).first();
+      if (!duplicate) {
+        studentId = candidate;
+        break;
+      }
+    }
+    if (!studentId) {
+      throw AppError.conflict(
+        "Could not generate a unique student ID. Try again.",
+      );
+    }
+  }
+
+  const finalStudentId = studentId;
+  const result = await db.transaction(async (tx) => {
+    const currentUser = await tx.orm.public.User.where({
+      id: userId,
+      role: "STUDENT",
+    }).first();
+    if (
+      !currentUser ||
+      (currentUser.status !== "INACTIVE" && currentUser.status !== "ACTIVE")
+    ) {
+      throw AppError.notFound("Student registration was not found.");
+    }
+    const studentAlreadyCreated = await tx.orm.public.Student.where({
+      userId,
+    }).first();
+    if (studentAlreadyCreated) {
+      throw AppError.conflict(
+        "A student profile already exists for this account.",
+      );
+    }
+
+    const student = await tx.orm.public.Student.create({
+      userId,
+      studentId: finalStudentId,
+      departmentId: department.id,
+      programId: program.id,
+      admissionYear: Number(payload.admissionYear),
+      currentYear: Number(payload.currentYear) || 1,
+      currentSemester: Number(payload.currentSemester) || 1,
+      dateOfBirth: null,
+      gender: null,
+      address: null,
+      createdAt: Temporal.Now.instant(),
+      updatedAt: Temporal.Now.instant(),
+    });
+    await tx.orm.public.User.where({ id: userId }).update({
+      status: "ACTIVE",
+      updatedAt: Temporal.Now.instant(),
+    });
+    return student;
+  });
+
+  await recordAuditLog(
+    "APPROVE_STUDENT_REGISTRATION",
+    "Student",
+    result.id,
+    {
+      userId,
+      studentId: result.studentId,
+      departmentId: department.id,
+      programId: program.id,
+    },
+    null,
+    adminUserId,
+    clientIp,
+    userAgent,
+  );
+
+  return {
+    ...result,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      status: "ACTIVE",
+    },
+    department,
+    program,
   };
 };
 
@@ -1616,6 +1803,8 @@ export const generateReports = async (filters: ReportQueryFilters) => {
 export const adminService = {
   getDashboardStats,
   getAllStudents,
+  getPendingStudentRegistrations,
+  approveStudentRegistration,
   createStudent,
   updateStudent,
   deleteStudent,

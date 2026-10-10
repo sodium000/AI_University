@@ -11,6 +11,16 @@ const adminAuth = auth("ADMIN", "SUPER_ADMIN");
 router.get("/dashboard", adminAuth, adminController.getDashboardStats);
 
 // 2. Student Management
+router.get(
+  "/students/pending-registrations",
+  adminAuth,
+  adminController.getPendingStudentRegistrations,
+);
+router.post(
+  "/students/:id/approve-registration",
+  adminAuth,
+  adminController.approveStudentRegistration,
+);
 router.get("/students", adminAuth, adminController.getAllStudents);
 router.post("/students", adminAuth, adminController.createStudent);
 router.patch("/students/:id", adminAuth, adminController.updateStudent);

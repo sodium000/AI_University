@@ -33,6 +33,46 @@ export const getAllStudents = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getPendingStudentRegistrations = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const data = await adminService.getPendingStudentRegistrations();
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Student registrations awaiting approval retrieved successfully",
+      data,
+    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to retrieve pending student registrations");
+  }
+};
+
+export const approveStudentRegistration = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const data = await adminService.approveStudentRegistration(
+      req.params.id as string,
+      req.body,
+      req.user?.id,
+      req.ip,
+      req.headers["user-agent"],
+    );
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Student registration approved and profile created successfully",
+      data,
+    });
+  } catch (error: unknown) {
+    return sendFailure(res, error, "Failed to approve student registration");
+  }
+};
+
 export const createStudent = async (req: AuthRequest, res: Response) => {
   try {
     const data = await adminService.createStudent(
@@ -387,6 +427,8 @@ export const generateReports = async (req: AuthRequest, res: Response) => {
 export const adminController = {
   getDashboardStats,
   getAllStudents,
+  getPendingStudentRegistrations,
+  approveStudentRegistration,
   createStudent,
   updateStudent,
   deleteStudent,

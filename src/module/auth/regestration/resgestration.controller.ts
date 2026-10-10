@@ -3,22 +3,6 @@ import { asyncHandler } from "../../../utils/asyncHandler";
 import { sendSuccess } from "../../../utils/apiResponse";
 import { authService } from "./regestration.service";
 
-const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: false,
-    sameSite: "none",
-    maxAge: 1000 * 60 * 60 * 24,
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: false,
-    sameSite: "none",
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-  });
-};
-
 const UserVarify = asyncHandler(async (req: Request, res: Response) => {
   await authService.verifyUser(req.body);
   sendSuccess(
@@ -30,15 +14,22 @@ const UserVarify = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const RegestrationUser = asyncHandler(async (req: Request, res: Response) => {
-  const { accessToken, refreshToken } = await authService.RegestrtionUser(req.body);
-  setAuthCookies(res, accessToken, refreshToken);
-  sendSuccess(res, 200, "User registration completed successfully", {
-    accessToken,
-    refreshToken,
-  });
+  const registration = await authService.RegestrtionUser(req.body);
+  sendSuccess(
+    res,
+    200,
+    "Email verified. Your student account is waiting for administrator approval.",
+    registration,
+  );
+});
+
+const ResendOtp = asyncHandler(async (req: Request, res: Response) => {
+  await authService.resendOtp(req.body.email);
+  sendSuccess(res, 200, "A new verification OTP was sent.", null);
 });
 
 export const authController = {
   UserVarify,
   RegestrationUser,
+  ResendOtp,
 };

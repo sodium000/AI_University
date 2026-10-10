@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/AppError";
 import { ErrorCode } from "../errors/errorCodes";
+import { normalizeError } from "../errors/normalizeError";
 import { sendFailure } from "../utils/apiResponse";
 
 export const notFoundHandler = (req: Request, res: Response) => {
@@ -19,10 +20,21 @@ export const notFoundHandler = (req: Request, res: Response) => {
 
 export const errorHandler = (
   error: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ) => {
+  const normalized = normalizeError(
+    error,
+    "An unexpected error occurred while processing your request.",
+  );
+  if (normalized.statusCode >= 500) {
+    console.error(
+      `[API ${normalized.statusCode}] ${req.method} ${req.path}: ${normalized.message}`,
+      normalized.stack || "",
+    );
+  }
+
   if (res.headersSent) {
     return;
   }

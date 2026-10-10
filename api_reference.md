@@ -87,7 +87,7 @@ On error:
 ### 1. Register User — Step 1: Send OTP
 
 ```
-POST /api/v1/auth/register
+POST /api/v1/auth/verifyUser
 ```
 
 Sends a 6-digit OTP to the provided email address. OTP is cached in Redis and expires in **5 minutes**. The user account is NOT created yet at this step.
@@ -103,17 +103,17 @@ Sends a 6-digit OTP to the provided email address. OTP is cached in Redis and ex
 ```
 
 **Field Rules:**
-- `name` — required, string
+- `name` — required, 2–100 characters
 - `email` — required, valid email format
-- `password` — required, minimum 6 characters
-- `phone` — optional
+- `password` — required, at least 8 characters including uppercase, lowercase, number, and special character
+- `phone` — optional, valid 11-digit Bangladesh number if provided
 
 **Success Response (200):**
 ```json
 {
   "success": true,
   "statusCode": 200,
-  "message": "OTP sent to john@example.com. Please verify within 5 minutes.",
+  "message": "Verification OTP sent to your email. Complete registration with POST /api/v1/auth/register.",
   "data": null
 }
 ```
@@ -123,7 +123,7 @@ Sends a 6-digit OTP to the provided email address. OTP is cached in Redis and ex
 ### 2. Verify OTP & Create Account — Step 2
 
 ```
-POST /api/v1/auth/verifyUser
+POST /api/v1/auth/register
 ```
 
 Verifies the OTP from Redis. On success, the user account is created and a JWT token pair is returned.
@@ -136,26 +136,43 @@ Verifies the OTP from Redis. On success, the user account is created and a JWT t
 }
 ```
 
-**Success Response (201):**
+**Success Response (200):**
 ```json
 {
   "success": true,
-  "statusCode": 201,
-  "message": "Account created successfully.",
+  "statusCode": 200,
+  "message": "Email verified. Your student account is waiting for administrator approval.",
   "data": {
-    "accessToken": "eyJhbGci...",
-    "refreshToken": "eyJhbGci...",
+    "pendingApproval": true,
     "user": {
       "id": "uuid",
       "name": "John Doe",
       "email": "john@example.com",
-      "role": "STUDENT"
+      "role": "STUDENT",
+      "status": "INACTIVE"
     }
   }
 }
 ```
 
-> Tokens are also set as **httpOnly cookies**: `accessToken` and `refreshToken`.
+No authentication tokens are issued at registration. The applicant cannot sign in until an administrator approves the request and assigns academic details.
+
+### 3. Resend Registration OTP
+
+```
+POST /api/v1/auth/resendOtp
+```
+
+Request a new OTP for a registration that is still pending in Redis. The new OTP expires in 5 minutes.
+
+**Request Body:**
+```json
+{
+  "email": "john@example.com"
+}
+```
+
+Registration does not accept or upload profile-photo files; no backend file-storage handling is used by this flow.
 
 ---
 
@@ -645,6 +662,8 @@ Submits an assignment by file URL.
 #### GET /api/v1/student/me/invoices — Get All Invoices
 
 Returns all fee invoices created for the student.
+Enrollment invoices use BDT and are calculated at BDT 500 per course credit.
+Stripe Checkout charges the invoice amount in BDT.
 
 **Success Response (200):**
 ```json
@@ -688,7 +707,9 @@ Returns all completed, failed, or pending payment records for the student.
 
 #### POST /api/v1/student/me/payments/checkout — Create Stripe Checkout Session
 
-Creates a Stripe hosted checkout session for paying an invoice.
+Creates a Stripe hosted checkout session for paying a BDT-denominated invoice.
+Enrollment fees are currently calculated at BDT 500 per course credit. The
+session redirects back to the frontend payment success or cancel page.
 
 **Request Body:**
 ```json
@@ -1219,6 +1240,8 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/api/v1/admin/students/pending-registrations` | List student accounts without a student profile that can be approved |
+| `POST` | `/api/v1/admin/students/:id/approve-registration` | Assign academic details, create the student profile, and activate the account |
 | `GET` | `/api/v1/admin/students` | List all students (supports query filters) |
 | `POST` | `/api/v1/admin/students` | Create a student account + profile |
 | `PATCH` | `/api/v1/admin/students/:id` | Update a student record |
@@ -1248,6 +1271,20 @@ Returns system-wide statistics: total students, faculty, departments, courses, a
   "address": "45 University Ave"
 }
 ```
+
+**POST approve registration body:**
+```json
+{
+  "departmentId": "<dept_uuid>",
+  "programId": "<program_uuid>",
+  "admissionYear": 2026,
+  "currentYear": 1,
+  "currentSemester": 1,
+  "studentId": "optional; generated when omitted"
+}
+```
+
+Approval atomically creates the student profile and activates the existing account. The selected program must belong to the selected department. Accounts created before the approval flow that have a `STUDENT` role but no student profile are also included in the pending list if their status is `ACTIVE` or `INACTIVE`.
 
 **DELETE Query Parameters (optional):**
 | Param | Type | Description |
@@ -1640,7 +1677,9 @@ Handles:
 GET /payment/success?session_id=<stripe_session_id>
 ```
 
-Stripe redirects here after a successful checkout. This route auto-verifies and records the payment. Useful as a fallback when the webhook cannot reach localhost.
+Legacy backend redirect handler that auto-verifies and records a payment.
+New checkout sessions return directly to the frontend payment success page,
+which verifies the Stripe session through the authenticated API.
 
 **Query Parameters:**
 | Param | Description |
@@ -1655,7 +1694,8 @@ Stripe redirects here after a successful checkout. This route auto-verifies and 
 GET /payment/cancel?invoice_id=<invoice_uuid>
 ```
 
-Stripe redirects here if the user cancels the checkout. Returns a graceful message.
+Legacy backend cancel handler. New checkout sessions return directly to the
+frontend payment cancel page.
 
 ---
 

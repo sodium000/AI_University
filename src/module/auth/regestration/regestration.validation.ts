@@ -21,7 +21,6 @@ export const verifyUserSchema = z.object({
     .trim()
     .regex(/^01[3-9]\d{8}$/, "Phone must be a valid 11-digit Bangladesh number")
     .optional(),
-  role: z.enum(["STUDENT", "FACULTY"]).optional(),
 });
 
 export const registerUserSchema = z.object({
@@ -32,5 +31,10 @@ export const registerUserSchema = z.object({
     .regex(/^\d{6}$/, "OTP must be a 6-digit code"),
 });
 
+export const resendOtpSchema = z.object({
+  email: z.string().trim().email("Invalid email address"),
+});
+
 export type VerifyUserInput = z.infer<typeof verifyUserSchema>;
 export type RegisterUserInput = z.infer<typeof registerUserSchema>;
+export type ResendOtpInput = z.infer<typeof resendOtpSchema>;

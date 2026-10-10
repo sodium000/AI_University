@@ -5,9 +5,12 @@ import { stripe } from "../../config/stripe";
 import { AppError } from "../../errors/AppError";
 import { ErrorCode } from "../../errors/errorCodes";
 
-const toInstant = (d?: Date | string | null) => {
+const toInstant = (d?: Date | string | Temporal.Instant | null) => {
   if (!d) return Temporal.Now.instant();
-  return Temporal.Instant.from(new Date(d).toISOString());
+  if (d instanceof Date) {
+    return Temporal.Instant.from(d.toISOString());
+  }
+  return Temporal.Instant.from(String(d));
 };
 
 interface UpdateProfilePayload {
@@ -299,20 +302,21 @@ const getSchedule = async (studentId: string) => {
   };
 };
 
-const generateUniqueInvoiceNo = async (): Promise<string> => {
-  const year = new Date().getFullYear();
-  for (let i = 0; i < 5; i++) {
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    const invoiceNo = `INV-${year}-${randomSuffix}`;
-    const exists = await db.orm.public.Invoice.where({ invoiceNo }).first();
-    if (!exists) {
-      return invoiceNo;
-    }
-  }
-  return `INV-${year}-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+const invoiceNoForEnrollment = (
+  enrollmentId: string,
+  enrolledAt: Date | string | Temporal.Instant,
+) => {
+  const instant = toInstant(enrolledAt);
+  const year = instant.toZonedDateTimeISO("UTC").year;
+  return `INV-${year}-${enrollmentId}-${instant.epochMilliseconds}`;
 };
 
-const createInvoiceForEnrollment = async (studentId: string, section: any) => {
+const invoiceDataForEnrollment = (
+  studentId: string,
+  section: any,
+  enrollmentId: string,
+  enrolledAt: Date | string | Temporal.Instant,
+) => {
   const credit = Number(section?.course?.credit || 3);
   const amount = credit > 0 ? credit * 500 : 1500;
 
@@ -321,23 +325,30 @@ const createInvoiceForEnrollment = async (studentId: string, section: any) => {
   let dueDateInstant = toInstant(defaultDueDate);
 
   if (section?.semester?.endDate) {
-    const semesterEnd = new Date(section.semester.endDate);
-    if (semesterEnd > new Date() && semesterEnd < defaultDueDate) {
-      dueDateInstant = toInstant(semesterEnd);
+    const semesterEnd = toInstant(section.semester.endDate);
+    if (
+      Temporal.Instant.compare(semesterEnd, Temporal.Now.instant()) > 0 &&
+      Temporal.Instant.compare(semesterEnd, dueDateInstant) < 0
+    ) {
+      dueDateInstant = semesterEnd;
     }
   }
 
-  const invoiceNo = await generateUniqueInvoiceNo();
-
-  const invoice = await db.orm.public.Invoice.create({
+  return {
     studentId,
-    invoiceNo,
+    invoiceNo: invoiceNoForEnrollment(enrollmentId, enrolledAt),
     amount,
     dueDate: dueDateInstant,
     status: "PENDING" as any,
     createdAt: toInstant(),
-  });
+  };
+};
 
+const notifyInvoiceCreated = async (
+  studentId: string,
+  section: any,
+  invoice: { invoiceNo: string; amount: number },
+) => {
   // Also send a notification to the student about the new invoice
   try {
     const student = await db.orm.public.Student.where({
@@ -352,7 +363,7 @@ const createInvoiceForEnrollment = async (studentId: string, section: any) => {
       await db.orm.public.Notification.create({
         userId: student.userId,
         title: "New Tuition Fee Invoice Issued",
-        message: `An invoice #${invoice.invoiceNo} of $${invoice.amount} has been issued for enrolling in ${courseTitle}${courseCode}. Please settle the payment by the due date.`,
+        message: `An invoice #${invoice.invoiceNo} of BDT ${invoice.amount} has been issued for enrolling in ${courseTitle}${courseCode}. Please settle the payment by the due date.`,
         type: "INFO" as any,
         isRead: false,
         createdAt: toInstant(),
@@ -361,6 +372,37 @@ const createInvoiceForEnrollment = async (studentId: string, section: any) => {
   } catch (err) {
     console.error("Failed to create notification for invoice:", err);
   }
+};
+
+const createInvoiceForEnrollment = async (
+  studentId: string,
+  section: any,
+  enrollmentId: string,
+  enrolledAt: Date | string | Temporal.Instant,
+) => {
+  const invoiceNo = invoiceNoForEnrollment(enrollmentId, enrolledAt);
+  const existingInvoice = await db.orm.public.Invoice.where({
+    invoiceNo,
+  }).first();
+  if (existingInvoice) {
+    return existingInvoice;
+  }
+
+  let invoice;
+  try {
+    invoice = await db.orm.public.Invoice.create(
+      invoiceDataForEnrollment(studentId, section, enrollmentId, enrolledAt),
+    );
+  } catch (error) {
+    const invoiceAfterConflict = await db.orm.public.Invoice.where({
+      invoiceNo,
+    }).first();
+    if (!invoiceAfterConflict) {
+      throw error;
+    }
+    return invoiceAfterConflict;
+  }
+  await notifyInvoiceCreated(studentId, section, invoice);
 
   return invoice;
 };
@@ -370,14 +412,14 @@ const serializeEnrollment = (enrollment: {
   studentId: string;
   sectionId: string;
   status: string;
-  enrolledAt?: Date | string | null;
+  enrolledAt?: Date | string | Temporal.Instant | null;
 }) => ({
   id: enrollment.id,
   studentId: enrollment.studentId,
   sectionId: enrollment.sectionId,
   status: enrollment.status,
   enrolledAt: enrollment.enrolledAt
-    ? new Date(enrollment.enrolledAt).toISOString()
+    ? toInstant(enrollment.enrolledAt).toString()
     : new Date().toISOString(),
 });
 
@@ -409,6 +451,58 @@ const enrollCourse = async (studentId: string, sectionId: string) => {
     });
   }
 
+  const existing = await db.orm.public.Enrollment.where({
+    studentId,
+    sectionId: normalizedSectionId,
+  }).first();
+
+  if (existing) {
+    if (existing.status === "ENROLLED") {
+      await createInvoiceForEnrollment(
+        studentId,
+        section,
+        existing.id,
+        existing.enrolledAt,
+      );
+
+      return serializeEnrollment(existing);
+    }
+
+    const enrolledAt = toInstant();
+    const { enrollment, invoice } = await db.transaction(async (tx) => {
+      await tx.orm.public.Enrollment.where({ id: existing.id }).update({
+        status: "ENROLLED" as any,
+        enrolledAt,
+      });
+      const invoiceNo = invoiceNoForEnrollment(existing.id, enrolledAt.toString());
+      const previousInvoice = await tx.orm.public.Invoice.where({
+        invoiceNo,
+      }).first();
+      const invoice =
+        previousInvoice ??
+        (await tx.orm.public.Invoice.create(
+          invoiceDataForEnrollment(
+            studentId,
+            section,
+            existing.id,
+            enrolledAt.toString(),
+          ),
+        ));
+      return {
+        enrollment: {
+          id: existing.id,
+          studentId,
+          sectionId: normalizedSectionId,
+          status: "ENROLLED",
+          enrolledAt: enrolledAt.toString(),
+        },
+        invoice,
+      };
+    });
+    await notifyInvoiceCreated(studentId, section, invoice);
+    return serializeEnrollment(enrollment);
+  }
+
   const currentEnrollments = await db.orm.public.Enrollment.where({
     sectionId: normalizedSectionId,
     status: "ENROLLED" as any,
@@ -427,41 +521,6 @@ const enrollCourse = async (studentId: string, sectionId: string) => {
         hint: "Choose another section or wait for a seat to open up.",
       },
     );
-  }
-
-  const existing = await db.orm.public.Enrollment.where({
-    studentId,
-    sectionId: normalizedSectionId,
-  }).first();
-
-  if (existing) {
-    if (existing.status === "ENROLLED") {
-      throw AppError.conflict(
-        "You are already enrolled in this section.",
-        ErrorCode.CONFLICT,
-        {
-          details: {
-            studentId,
-            sectionId: normalizedSectionId,
-          },
-        },
-      );
-    }
-
-    await db.orm.public.Enrollment.where({ id: existing.id }).update({
-      status: "ENROLLED" as any,
-      enrolledAt: toInstant(),
-    });
-
-    await createInvoiceForEnrollment(studentId, section);
-
-    return serializeEnrollment({
-      id: existing.id,
-      studentId,
-      sectionId: normalizedSectionId,
-      status: "ENROLLED",
-      enrolledAt: new Date().toISOString(),
-    });
   }
 
   const activeStudentEnrollments = await db.orm.public.Enrollment.where({
@@ -491,22 +550,27 @@ const enrollCourse = async (studentId: string, sectionId: string) => {
     );
   }
 
-  const enrollment = await db.orm.public.Enrollment.create({
-    studentId,
-    sectionId: normalizedSectionId,
-    status: "ENROLLED" as any,
-    enrolledAt: toInstant(),
+  const enrolledAt = toInstant();
+  const { enrollment, invoice } = await db.transaction(async (tx) => {
+    const enrollment = await tx.orm.public.Enrollment.create({
+      studentId,
+      sectionId: normalizedSectionId,
+      status: "ENROLLED" as any,
+      enrolledAt,
+    });
+    const invoice = await tx.orm.public.Invoice.create(
+      invoiceDataForEnrollment(
+        studentId,
+        section,
+        enrollment.id,
+        enrolledAt.toString(),
+      ),
+    );
+    return { enrollment, invoice };
   });
+  await notifyInvoiceCreated(studentId, section, invoice);
 
-  await createInvoiceForEnrollment(studentId, section);
-
-  return serializeEnrollment({
-    id: enrollment.id,
-    studentId: enrollment.studentId,
-    sectionId: enrollment.sectionId,
-    status: enrollment.status,
-    enrolledAt: enrollment.enrolledAt,
-  });
+  return serializeEnrollment(enrollment);
 };
 
 const dropEnrollment = async (
@@ -880,41 +944,9 @@ const getInvoices = async (studentId: string) => {
     throw new Error("Student profile record not found.");
   }
 
-  let invoices = await db.orm.public.Invoice.where({ studentId })
-    .include("payments", (p) => p.orderBy((pay) => pay.createdAt.desc()))
+  return db.orm.public.Invoice.where({ studentId })
     .orderBy((i) => i.createdAt.desc())
     .all();
-
-  // If student has active enrollments but fewer non-cancelled invoices, ensure invoices exist
-  const activeEnrollments = await db.orm.public.Enrollment.where({
-    studentId,
-    status: "ENROLLED" as any,
-  })
-    .include("section", (s) => s.include("course").include("semester"))
-    .all();
-
-  const nonCancelledInvoices = invoices.filter((i) => i.status !== "CANCELLED");
-
-  if (activeEnrollments.length > nonCancelledInvoices.length) {
-    const missingCount = activeEnrollments.length - nonCancelledInvoices.length;
-    for (
-      let idx = 0;
-      idx < missingCount && idx < activeEnrollments.length;
-      idx++
-    ) {
-      const enrollment = activeEnrollments[idx];
-      if (enrollment!.section) {
-        await createInvoiceForEnrollment(studentId, enrollment!.section);
-      }
-    }
-
-    invoices = await db.orm.public.Invoice.where({ studentId })
-      .include("payments", (p) => p.orderBy((pay) => pay.createdAt.desc()))
-      .orderBy((i) => i.createdAt.desc())
-      .all();
-  }
-
-  return invoices;
 };
 
 const getPayments = async (studentId: string) => {
@@ -988,6 +1020,14 @@ const createPaymentCheckoutSession = async (
   if (invoice.status === "CANCELLED") {
     throw new Error("Cannot pay a cancelled invoice.");
   }
+  const invoiceAmount = Number(invoice.amount);
+  if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+    throw AppError.badRequest(
+      "This invoice has an invalid amount and cannot be paid.",
+      ErrorCode.BAD_REQUEST,
+      { details: { invoiceId: invoice.id, amount: invoice.amount } },
+    );
+  }
 
   const student = await db.orm.public.Student.where({
     id: studentId,
@@ -996,22 +1036,19 @@ const createPaymentCheckoutSession = async (
     .first();
   const customerEmail = student?.user?.email;
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5000";
-  // Backend URL for Stripe redirect handlers (payment/success, payment/cancel)
-  const backendUrl =
-    process.env.APP_URL ||
-    `http://localhost:${process.env.PORT || 5000}`;
+  const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:3000")
+    .replace(/\/+$/, "");
 
   // Dynamic line item based on invoice amount
   const line_items = [
     {
       price_data: {
-        currency: "usd",
+        currency: "bdt",
         product_data: {
           name: `Tuition / Fee - Invoice #${invoice.invoiceNo}`,
           description: `University fee payment for invoice #${invoice.invoiceNo}`,
         },
-        unit_amount: Math.max(Math.round(Number(invoice.amount) * 100), 50),
+        unit_amount: Math.round(invoiceAmount * 100),
       },
       quantity: 1,
     },
@@ -1027,8 +1064,8 @@ const createPaymentCheckoutSession = async (
       invoiceId: invoice.id,
       studentId,
     },
-    success_url: `${backendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${backendUrl}/payment/cancel?invoice_id=${invoice.id}`,
+    success_url: `${frontendUrl}/student/payments/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${frontendUrl}/student/payments/cancel?invoice_id=${invoice.id}`,
   });
 
   return {
@@ -1037,7 +1074,10 @@ const createPaymentCheckoutSession = async (
   };
 };
 
-const verifyAndFulfillPayment = async (sessionId: string) => {
+const verifyAndFulfillPayment = async (
+  sessionId: string,
+  expectedStudentId?: string,
+) => {
   if (!sessionId) {
     throw new Error("sessionId is required.");
   }
@@ -1051,13 +1091,28 @@ const verifyAndFulfillPayment = async (sessionId: string) => {
   const invoiceId = session.metadata?.invoiceId;
   const studentId = session.metadata?.studentId;
 
-  if (!invoiceId) {
-    throw new Error("Missing invoiceId metadata in Stripe session.");
+  if (!invoiceId || !studentId) {
+    throw AppError.badRequest(
+      "Stripe session is missing invoice or student metadata.",
+      ErrorCode.BAD_REQUEST,
+    );
+  }
+  if (expectedStudentId && studentId !== expectedStudentId) {
+    throw AppError.forbidden(
+      "This checkout session belongs to a different student.",
+      ErrorCode.FORBIDDEN,
+    );
   }
 
-  const invoice = await db.orm.public.Invoice.where({ id: invoiceId }).first();
+  const invoice = await db.orm.public.Invoice.where({
+    id: invoiceId,
+    studentId,
+  }).first();
   if (!invoice) {
-    throw new Error("Associated invoice not found.");
+    throw AppError.notFound(
+      "The invoice associated with this checkout session was not found.",
+      ErrorCode.NOT_FOUND,
+    );
   }
 
   const transactionId = (session.payment_intent as string) || session.id;
@@ -1068,10 +1123,15 @@ const verifyAndFulfillPayment = async (sessionId: string) => {
   }).first();
 
   if (existingPayment) {
+    if (invoice.status !== "PAID") {
+      await db.orm.public.Invoice.where({ id: invoice.id }).update({
+        status: "PAID" as any,
+      });
+    }
     return {
       message: "Payment was already processed.",
       payment: existingPayment,
-      invoice,
+      invoiceStatus: "PAID",
     };
   }
 
@@ -1098,7 +1158,7 @@ const verifyAndFulfillPayment = async (sessionId: string) => {
     await db.orm.public.Notification.create({
       userId: student.userId,
       title: "Invoice Paid Successfully",
-      message: `Your payment of $${paidAmount} for invoice #${invoice.invoiceNo} was successful. Transaction ID: ${transactionId}`,
+      message: `Your payment of BDT ${paidAmount} for invoice #${invoice.invoiceNo} was successful. Transaction ID: ${transactionId}`,
       type: "INFO" as any,
       isRead: false,
       createdAt: Temporal.Now.instant(),
